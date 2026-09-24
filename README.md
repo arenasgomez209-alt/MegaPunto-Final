@@ -1,6 +1,16 @@
-# Megapunto - FastAPI & React
+# 🛒 MegaPunto - Plataforma E-Commerce Full Stack
 
-Sistema de gestión y aplicación web desarrollado con **FastAPI** en el backend (con base de datos MongoDB) y **React** (construido con Vite) en el frontend.
+Sistema de gestión y aplicación web desarrollado con **FastAPI** en el backend (con base de datos MongoDB Atlas) y **React** (construido con Vite) en el frontend.
+
+---
+
+## 🌐 Despliegue en Producción (Railway)
+
+| Servicio | URL |
+|----------|-----|
+| 🖥️ **Frontend (Tienda)** | [https://megapunto-finalfrontend-production.up.railway.app](https://megapunto-finalfrontend-production.up.railway.app) |
+| ⚙️ **Backend (API REST)** | [https://megapunto-backend-production.up.railway.app](https://megapunto-backend-production.up.railway.app) |
+| 📄 **Documentación Swagger** | [https://megapunto-backend-production.up.railway.app/docs](https://megapunto-backend-production.up.railway.app/docs) |
 
 ---
 
@@ -15,10 +25,12 @@ Sistema de gestión y aplicación web desarrollado con **FastAPI** en el backend
 │   │   ├── schemas.py        # Esquemas de Pydantic
 │   │   ├── security.py       # Autenticación JWT y hashing de contraseñas
 │   │   └── seed.py           # Datos iniciales
+│   ├── Dockerfile            # Docker para despliegue en Railway
 │   ├── requirements.txt      # Dependencias de Python
 │   └── .env.example          # Plantilla de variables de entorno
 ├── frontend/                 # Aplicación cliente en React + Vite
 │   ├── src/                  # Componentes, vistas y lógica de UI
+│   ├── Dockerfile            # Docker para despliegue en Railway
 │   ├── package.json          # Dependencias de frontend
 │   └── vite.config.js        # Configuración de Vite
 ├── iniciar_backend.bat       # Script para iniciar el servidor FastAPI
@@ -28,7 +40,22 @@ Sistema de gestión y aplicación web desarrollado con **FastAPI** en el backend
 
 ---
 
-## 🛠️ Requisitos Previos
+## 🛠️ Tecnologías Utilizadas
+
+| Tecnología | Uso |
+|------------|-----|
+| **FastAPI** | Backend API REST |
+| **MongoDB Atlas** | Base de datos NoSQL en la nube |
+| **React 19** | Frontend SPA |
+| **Vite** | Bundler y dev server |
+| **Tailwind CSS** | Estilos y diseño responsivo |
+| **JWT** | Autenticación y autorización |
+| **Railway** | Despliegue en producción (Docker) |
+| **Recharts** | Gráficas del dashboard |
+
+---
+
+## 📋 Requisitos Previos
 
 - **Python 3.10+**
 - **Node.js 18+** y npm
@@ -36,13 +63,13 @@ Sistema de gestión y aplicación web desarrollado con **FastAPI** en el backend
 
 ---
 
-## ⚙️ Instalación y Configuración
+## ⚙️ Instalación y Configuración Local
 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/arenasgomez209-alt/Megapunto-Fastapi.git
-cd Megapunto-Fastapi
+git clone https://github.com/arenasgomez209-alt/MegaPunto-Final.git
+cd MegaPunto-Final
 ```
 
 ### 2. Configurar el Backend
@@ -103,3 +130,26 @@ iniciar_todo.bat
   npm run dev
   ```
   Disponible en: [http://localhost:5173](http://localhost:5173)
+
+---
+
+## 👥 Credenciales de Prueba
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| **Administrador** | `admin@megapunto.com` | `Admin123*` |
+| **Empleado** | `empleado@megapunto.com` | `Empleado123*` |
+
+---
+
+## 📝 Funcionalidades Principales
+
+- 🛍️ Catálogo de productos con categorías y filtros
+- 🛒 Carrito de compras interactivo
+- 👤 Registro e inicio de sesión con JWT
+- 👑 Panel de Administración (Dashboard, Ventas, Facturas, Reportes, PQR, Usuarios, Productos)
+- 💼 Panel de Empleado
+- 📊 Gráficas de analítica y reportes en PDF/Excel
+- 💬 Chatbot con Inteligencia Artificial
+- 📱 Diseño responsivo
+- 🎨 Diseño premium con colores de la marca MegaPunto
