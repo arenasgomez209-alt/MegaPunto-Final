@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api';
 
 export const apiFetch = async (endpoint, options = {}) => {
   const token = localStorage.getItem('megapunto_token');
@@ -117,7 +117,8 @@ export const downloadFile = async (url, defaultFilename) => {
   try {
     const token = localStorage.getItem('megapunto_token');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(`http://localhost:8000${url}`, { headers });
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const res = await fetch(`${baseUrl}${url}`, { headers });
     if (!res.ok) throw new Error('Error al descargar archivo');
     const blob = await res.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
