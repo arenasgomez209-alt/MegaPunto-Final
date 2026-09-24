@@ -54,7 +54,11 @@ export const authAPI = {
 
 export const usersAPI = {
   getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    // Filtrar undefined y strings vacíos antes de construir query
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
     return apiFetch(`/usuarios${query ? `?${query}` : ''}`, { method: 'GET' });
   },
   getById: (id) =>

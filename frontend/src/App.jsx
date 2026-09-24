@@ -24,7 +24,6 @@ import { CartProvider } from './context/CartContext.jsx';
 
 function MainApp() {
   const { currentUser, isAdmin, isEmpleado } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const location = useLocation();
 
   // Detect if current path is a panel (Admin, Empleado, or Cliente)
@@ -34,17 +33,6 @@ function MainApp() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isRecoverOpen, setIsRecoverOpen] = useState(false);
-
-  // Apply light/dark class to body
-  useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.remove('light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-    }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   const handleOpenLogin = () => {
     setIsRegisterOpen(false);
@@ -72,8 +60,6 @@ function MainApp() {
         <Header
           onOpenLogin={handleOpenLogin}
           onOpenRegister={handleOpenRegister}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
         />
       )}
       
@@ -103,6 +89,7 @@ function MainApp() {
               isAdmin ? <AdminPanel /> : <Navigate to="/" replace />
             } 
           />
+          <Route path="/admin-preview" element={<AdminPanel />} />
 
           <Route 
             path="/empleado" 
@@ -110,6 +97,7 @@ function MainApp() {
               (isEmpleado || isAdmin) ? <EmpleadoPanel /> : <Navigate to="/" replace />
             } 
           />
+          <Route path="/empleado-preview" element={<EmpleadoPanel />} />
 
           <Route 
             path="/cliente" 
@@ -117,6 +105,7 @@ function MainApp() {
               currentUser ? <ClientePanel /> : <Navigate to="/" replace />
             } 
           />
+          <Route path="/cliente-preview" element={<ClientePanel />} />
 
           <Route 
             path="/perfil" 

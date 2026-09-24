@@ -15,35 +15,55 @@ import React from 'react';
  */
 export default function StatCard({
   icon: Icon,
-  iconColor = 'text-purple-400',
-  iconBg = 'rgba(91,33,182,0.12)',
+  iconColor,
+  iconBg,
   label,
+  title,
   value,
-  valueColor = '',
+  valueColor = 'text-slate-900',
   sublabel,
-  sublabelColor = 'text-slate-400',
+  trend,
+  sublabelColor = 'text-slate-500',
+  color = 'purple',
 }) {
+  const displayLabel = label || title;
+  const displaySublabel = sublabel || trend;
+
+  // Preset styles based on color prop
+  const colorMap = {
+    purple:  { bg: 'bg-purple-50 text-purple-600 border-purple-100',  icon: 'text-purple-600',  accent: '#7c3aed' },
+    orange:  { bg: 'bg-orange-50 text-orange-600 border-orange-100',  icon: 'text-orange-600',  accent: '#ea580c' },
+    emerald: { bg: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: 'text-emerald-600', accent: '#059669' },
+    blue:    { bg: 'bg-blue-50 text-blue-600 border-blue-100',      icon: 'text-blue-600',    accent: '#2563eb' },
+    sky:     { bg: 'bg-sky-50 text-sky-600 border-sky-100',        icon: 'text-sky-600',     accent: '#0284c7' },
+    rose:    { bg: 'bg-rose-50 text-rose-600 border-rose-100',      icon: 'text-rose-600',    accent: '#e11d48' },
+  };
+
+  const currentTheme = colorMap[color] || colorMap.purple;
+
   return (
-    <div className="kpi-card">
+    <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:shadow-md hover:border-slate-300 transition-all group flex items-start gap-3.5">
       {/* Icon container */}
       <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: iconBg }}
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${currentTheme.bg}`}
+        style={iconBg ? { background: iconBg } : {}}
       >
-        {Icon && <Icon className={`w-4.5 h-4.5 ${iconColor}`} />}
+        {Icon && <Icon className={`w-5 h-5 ${iconColor || currentTheme.icon} group-hover:scale-110 transition-transform`} />}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--text-muted)] truncate">
-          {label}
-        </p>
-        <p className={`text-2xl font-black leading-tight text-[color:var(--text-main)] ${valueColor}`}>
+        {displayLabel && (
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate mb-0.5">
+            {displayLabel}
+          </p>
+        )}
+        <p className={`text-xl sm:text-2xl font-black leading-tight tracking-tight ${valueColor}`}>
           {value}
         </p>
-        {sublabel && (
-          <p className={`text-[10px] font-semibold mt-0.5 truncate ${sublabelColor}`}>
-            {sublabel}
+        {displaySublabel && (
+          <p className={`text-[10px] font-bold mt-1 truncate ${sublabelColor}`}>
+            {displaySublabel}
           </p>
         )}
       </div>

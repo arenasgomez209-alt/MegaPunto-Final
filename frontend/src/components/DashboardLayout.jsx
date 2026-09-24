@@ -63,23 +63,23 @@ export default function DashboardLayout({
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-100'
         }`}
         style={{
-          background: 'var(--bg-card)',
-          borderColor: 'var(--border-card)',
-          boxShadow: 'var(--shadow-card)'
+          background: '#0b0f19',
+          borderColor: 'rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
         }}
       >
         {/* Brand / Logo Header */}
-        <div className="p-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'var(--border-glass)' }}>
+        <div className="p-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-600/30 transition-transform group-hover:scale-105"
                  style={{ background: 'linear-gradient(135deg, #ea580c, #f97316)' }}>
               <Store className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-black text-lg tracking-wider text-[color:var(--text-main)] block leading-tight">
+              <span className="font-black text-lg tracking-wider text-white block leading-tight">
                 MEGA<span className="text-orange-500">PUNTO</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase block">
+              <span className="text-[10px] text-slate-300 font-semibold tracking-widest uppercase block">
                 Colombia · Quinto Avance
               </span>
             </div>
@@ -93,17 +93,17 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* User Profile Mini Card */}
+        {/* User Profile Mini Card (Negro Premium) */}
         <div className="p-4 mx-3 my-3 rounded-2xl border flex items-center gap-3 shrink-0"
-             style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+             style={{ background: '#111827', borderColor: 'rgba(255, 255, 255, 0.08)' }}>
           <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-black text-base shadow-md bg-gradient-to-br ${roleStyle.gradient}`}>
             {currentUser?.nombre ? currentUser.nombre.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-black text-[color:var(--text-main)] truncate">
+            <h4 className="text-xs font-black text-white truncate">
               {currentUser?.nombre ? `${currentUser.nombre} ${currentUser.apellido || ''}` : 'Usuario MEGAPUNTO'}
             </h4>
-            <p className="text-[10px] text-slate-400 truncate">{currentUser?.email || 'sesion@megapunto.com'}</p>
+            <p className="text-[10px] text-slate-300 font-medium truncate">{currentUser?.email || 'sesion@megapunto.com'}</p>
             <div className="mt-1">
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border}`}>
                 {currentUser?.rol || roleName}
@@ -151,7 +151,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Sidebar Bottom Actions (User Requirement) */}
-        <div className="p-3 border-t space-y-1.5 shrink-0" style={{ borderColor: 'var(--border-glass)' }}>
+        <div className="p-3 border-t space-y-1.5 shrink-0" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
           {/* Volver al Sitio Web */}
           <Link
             to="/"
@@ -174,44 +174,42 @@ export default function DashboardLayout({
       </aside>
 
       {/* ────────────────── MAIN CONTENT WRAPPER ────────────────── */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         {/* Top Navbar */}
-        <header className="h-16 px-4 sm:px-6 border-b flex items-center justify-between shrink-0"
-                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-glass)' }}>
+        <header className="h-16 px-4 sm:px-6 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-xl border border-white/10 text-slate-300 hover:text-white lg:hidden cursor-pointer"
+              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 lg:hidden cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-[color:var(--text-main)] flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
                 {title}
               </h1>
-              <p className="text-[11px] text-slate-400 hidden sm:block">{subtitle}</p>
+              <p className="text-[11px] text-slate-500 hidden sm:block">{subtitle}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px]"
-                 style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)', color: 'var(--text-muted)' }}>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-[11px] text-slate-600 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>FastAPI + MongoDB Atlas En Línea</span>
             </div>
 
             <Link
               to="/"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 border border-white/10 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-purple-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
             >
-              <Globe className="w-3.5 h-3.5 text-orange-400" />
+              <Globe className="w-3.5 h-3.5 text-orange-500" />
               <span>Ver Tienda</span>
             </Link>
           </div>
         </header>
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar bg-slate-50">
           {children}
         </main>
       </div>

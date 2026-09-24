@@ -51,6 +51,7 @@ import DashboardLayout from '../components/DashboardLayout.jsx';
 import Button from '../components/Button.jsx';
 import Input from '../components/Input.jsx';
 import ModalCrearProducto from '../components/ModalCrearProducto.jsx';
+import ModalGestionUsuario from '../components/ModalGestionUsuario.jsx';
 import Toast from '../components/Toast.jsx';
 import StatCard from '../components/StatCard.jsx';
 import Badge from '../components/Badge.jsx';
@@ -224,17 +225,75 @@ export default function AdminPanel() {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('Todos');
   const [userStatusFilter, setUserStatusFilter] = useState('Todos');
+  const [userSubTab, setUserSubTab] = useState('empleados'); // 'empleados' | 'clientes'
+
+  // Modal crear/editar empleado
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null); // null = crear, object = editar
+  const emptyUserForm = { nombre: '', apellido: '', email: '', telefono: '', tipoDocumento: 'CC', numeroDocumento: '', password: '' };
+  const [userForm, setUserForm] = useState(emptyUserForm);
+  const [savingUser, setSavingUser] = useState(false);
+
+  const openCreateEmpleado = () => {
+    setEditingUser(null);
+    setUserForm(emptyUserForm);
+    setIsUserModalOpen(true);
+  };
+
+  const openEditUser = (user) => {
+    setEditingUser(user);
+    setUserForm({
+      nombre: user.nombre || '',
+      apellido: user.apellido || '',
+      email: user.email || '',
+      telefono: user.telefono || '',
+      tipoDocumento: user.tipoDocumento || 'CC',
+      numeroDocumento: user.numeroDocumento || '',
+      password: ''
+    });
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = async (payload) => {
+    setSavingUser(true);
+    let res;
+    if (editingUser) {
+      res = await usersAPI.update(editingUser._id || editingUser.id, payload);
+    } else {
+      res = await usersAPI.create({ ...payload, rol: 'Empleado' });
+    }
+    setSavingUser(false);
+    if (res.ok && (res.data?.success || res.data?.id || res.data?._id)) {
+      showToast(editingUser ? 'Usuario actualizado correctamente.' : 'Empleado creado correctamente.');
+      setIsUserModalOpen(false);
+      fetchUsers();
+    } else {
+      showToast(res.data?.message || 'Error al guardar. Verifica los datos.', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    const rol = user.rol || 'Usuario';
+    if (!window.confirm(`¿Eliminar a ${user.nombre} ${user.apellido || ''} (${rol})? Esta acción no se puede deshacer.`)) return;
+    const res = await usersAPI.delete(user._id || user.id);
+    if (res.ok) {
+      showToast(`${user.nombre} eliminado correctamente.`);
+      fetchUsers();
+    } else {
+      showToast(res.data?.message || 'Error al eliminar usuario.', 'error');
+    }
+  };
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
     const res = await usersAPI.getAll({
       search: userSearch,
-      rol: userRoleFilter,
-      estado: userStatusFilter
+      rol: userRoleFilter !== 'Todos' ? userRoleFilter : undefined,
+      estado: userStatusFilter !== 'Todos' ? userStatusFilter : undefined
     });
     setLoadingUsers(false);
     if (res.ok && res.data?.success) {
-      setUsers(res.data.users);
+      setUsers(res.data.users || []);
     }
   };
 
@@ -245,12 +304,16 @@ export default function AdminPanel() {
   const handleToggleUserStatus = async (user) => {
     const res = await usersAPI.toggleStatus(user._id || user.id);
     if (res.ok && res.data?.success) {
-      showToast(`Estado de ${user.nombre} actualizado a ${res.data.user.estado}.`);
+      showToast(`Estado de ${user.nombre} actualizado a ${res.data.user?.estado || 'cambiado'}.`);
       fetchUsers();
     } else {
       showToast('Error al cambiar estado.', 'error');
     }
   };
+
+  // Filtros por sub-pestaña
+  const empleados = users.filter(u => u.rol === 'Empleado');
+  const clientes  = users.filter(u => u.rol === 'Cliente');
 
   // ────────────────── TAB 7: PRODUCTOS ──────────────────
   const [products, setProducts] = useState([]);
@@ -316,41 +379,37 @@ export default function AdminPanel() {
       {activeTab === 'analytics' && (
         <div className="space-y-6 animate-fadeIn">
           {/* Top Filter Bar (Requerimiento 13) */}
-          <div className="p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-4"
-               style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+          <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-orange-400" />
-              <span className="text-xs font-bold text-[color:var(--text-main)]">Filtros del Dashboard:</span>
+              <Filter className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-bold text-slate-800">Filtros del Dashboard:</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-[11px]">Desde:</span>
+                <span className="text-slate-500 text-[11px] font-medium">Desde:</span>
                 <input
                   type="date"
                   value={filterStartDate}
                   onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-xl border outline-none text-xs"
-                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
                 />
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-[11px]">Hasta:</span>
+                <span className="text-slate-500 text-[11px] font-medium">Hasta:</span>
                 <input
                   type="date"
                   value={filterEndDate}
                   onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-xl border outline-none text-xs"
-                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
                 />
               </div>
 
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border outline-none text-xs"
-                style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
               >
                 <option value="Todos">Todos los Estados</option>
                 <option value="Completada">Completada</option>
@@ -361,7 +420,7 @@ export default function AdminPanel() {
               {(filterStartDate || filterEndDate || filterStatus !== 'Todos') && (
                 <button
                   onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterStatus('Todos'); }}
-                  className="text-xs text-orange-400 hover:underline cursor-pointer"
+                  className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
                 >
                   Restablecer
                 </button>
@@ -416,12 +475,11 @@ export default function AdminPanel() {
               <TrendingUp className="w-4 h-4 text-orange-500" />
               Comportamiento y Análisis de Ventas
             </h3>
-            <div className="flex items-center gap-1 p-1 rounded-xl border"
-                 style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+            <div className="flex items-center gap-1 p-1 rounded-xl border bg-white border-slate-200 shadow-2xs">
               <button
                 onClick={() => setStatsPeriod('dia')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  statsPeriod === 'dia' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  statsPeriod === 'dia' ? 'bg-orange-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 Por Día
@@ -429,7 +487,7 @@ export default function AdminPanel() {
               <button
                 onClick={() => setStatsPeriod('semana')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  statsPeriod === 'semana' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  statsPeriod === 'semana' ? 'bg-orange-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 Por Semana
@@ -437,7 +495,7 @@ export default function AdminPanel() {
               <button
                 onClick={() => setStatsPeriod('mes')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  statsPeriod === 'mes' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                  statsPeriod === 'mes' ? 'bg-orange-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 Por Mes
@@ -448,13 +506,13 @@ export default function AdminPanel() {
           {/* Charts Row: Bar Chart + Line Chart (Requerimiento 11) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gráfico de Barras: Monto de Facturación */}
-            <div className="p-5 rounded-2xl border space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+            <div className="p-5 rounded-2xl border bg-white border-slate-200 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-black text-[color:var(--text-main)] uppercase tracking-wider">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                     Facturación Comercial ({statsPeriod.toUpperCase()})
                   </h4>
-                  <p className="text-[11px] text-slate-400">Total en pesos colombianos (COP)</p>
+                  <p className="text-[11px] text-slate-500">Total en pesos colombianos (COP)</p>
                 </div>
                 <Badge color="orange">Gráfico de Barras</Badge>
               </div>
@@ -463,30 +521,30 @@ export default function AdminPanel() {
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
-                      <XAxis dataKey={chartXKey} stroke="#94a3b8" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey={chartXKey} stroke="#64748b" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
                       <Tooltip
-                        contentStyle={{ background: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
+                        contentStyle={{ background: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '11px', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                         formatter={(val) => [formatCOP(val), 'Facturación']}
                       />
                       <Bar dataKey="total" fill="#ea580c" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500 text-xs">Sin datos en el período</div>
+                  <div className="h-full flex items-center justify-center text-slate-400 text-xs">Sin datos en el período</div>
                 )}
               </div>
             </div>
 
             {/* Gráfico Lineal: Número de Ventas y Tendencia */}
-            <div className="p-5 rounded-2xl border space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+            <div className="p-5 rounded-2xl border bg-white border-slate-200 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-black text-[color:var(--text-main)] uppercase tracking-wider">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                     Operaciones y Tendencia de Ventas
                   </h4>
-                  <p className="text-[11px] text-slate-400">Volumen de pedidos confirmados</p>
+                  <p className="text-[11px] text-slate-500">Volumen de pedidos confirmados</p>
                 </div>
                 <Badge color="emerald">Gráfico Lineal</Badge>
               </div>
@@ -495,18 +553,18 @@ export default function AdminPanel() {
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
-                      <XAxis dataKey={chartXKey} stroke="#94a3b8" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} allowDecimals={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey={chartXKey} stroke="#64748b" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
                       <Tooltip
-                        contentStyle={{ background: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
+                        contentStyle={{ background: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '11px', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                         formatter={(val) => [val, 'Ventas Realizadas']}
                       />
-                      <Line type="monotone" dataKey="cantidad" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="cantidad" stroke="#059669" strokeWidth={3} dot={{ r: 4, fill: '#059669' }} activeDot={{ r: 6 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500 text-xs">Sin datos en el período</div>
+                  <div className="h-full flex items-center justify-center text-slate-400 text-xs">Sin datos en el período</div>
                 )}
               </div>
             </div>
@@ -515,23 +573,22 @@ export default function AdminPanel() {
           {/* Bottom Row: Top Products & Categories Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Top Products */}
-            <div className="p-5 rounded-2xl border space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-              <h4 className="text-xs font-black text-[color:var(--text-main)] uppercase tracking-wider">
+            <div className="p-5 rounded-2xl border bg-white border-slate-200 shadow-xs space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                 Top 5 Productos con Mayor Facturación
               </h4>
               <div className="space-y-2">
                 {dashboardStats?.top_productos?.map((p, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border text-xs"
-                       style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-5 h-5 rounded-full bg-orange-500/20 text-orange-400 font-bold flex items-center justify-center text-[10px] shrink-0">
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 font-black flex items-center justify-center text-[10px] shrink-0">
                         {idx + 1}
                       </span>
-                      <span className="font-bold text-[color:var(--text-main)] truncate">{p.nombre}</span>
+                      <span className="font-bold text-slate-800 truncate">{p.nombre}</span>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className="font-black text-orange-400 block">{formatCOP(p.total)}</span>
-                      <span className="text-[10px] text-slate-400">{p.cantidad} u. vendidas</span>
+                      <span className="font-black text-orange-600 block">{formatCOP(p.total)}</span>
+                      <span className="text-[10px] text-slate-500">{p.cantidad} u. vendidas</span>
                     </div>
                   </div>
                 ))}
@@ -539,18 +596,17 @@ export default function AdminPanel() {
             </div>
 
             {/* Categorías */}
-            <div className="p-5 rounded-2xl border space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-              <h4 className="text-xs font-black text-[color:var(--text-main)] uppercase tracking-wider">
+            <div className="p-5 rounded-2xl border bg-white border-slate-200 shadow-xs space-y-3">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                 Distribución por Categorías
               </h4>
               <div className="space-y-2">
                 {dashboardStats?.ventas_por_categoria?.map((cat, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border text-xs"
-                       style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
-                    <span className="font-bold text-[color:var(--text-main)]">{cat.categoria}</span>
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs hover:border-slate-300 transition-colors">
+                    <span className="font-bold text-slate-800">{cat.categoria}</span>
                     <div className="text-right">
-                      <span className="font-black text-emerald-400 block">{formatCOP(cat.total)}</span>
-                      <span className="text-[10px] text-slate-400">{cat.cantidad} unidades</span>
+                      <span className="font-black text-emerald-600 block">{formatCOP(cat.total)}</span>
+                      <span className="text-[10px] text-slate-500">{cat.cantidad} unidades</span>
                     </div>
                   </div>
                 ))}
@@ -1050,77 +1106,154 @@ export default function AdminPanel() {
       {/* ════════════════════ TAB 6: GESTIÓN DE USUARIOS ════════════════════ */}
       {activeTab === 'usuarios' && (
         <div className="space-y-5 animate-fadeIn">
+
+          {/* Header + botón crear empleado */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-black text-[color:var(--text-main)]">Control y Gestión de Usuarios</h3>
-              <p className="text-xs text-slate-400">Listado, roles y control de estado de acceso a la plataforma</p>
+              <p className="text-xs font-medium" style={{color:'#7c3aed'}}>Administra empleados y clientes de la plataforma</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              <Input
-                placeholder="Buscar usuarios..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                icon={Search}
-              />
-              <select
-                value={userRoleFilter}
-                onChange={(e) => setUserRoleFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border outline-none text-xs font-bold"
-                style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
-              >
-                <option value="Todos">Todos los Roles</option>
-                <option value="Administrador">Administrador</option>
-                <option value="Empleado">Empleado</option>
-                <option value="Cliente">Cliente</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <Input placeholder="Buscar..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} icon={Search} />
+              {userSubTab === 'empleados' && (
+                <Button variant="orange" size="sm" icon={Plus} onClick={openCreateEmpleado}>
+                  Nuevo Empleado
+                </Button>
+              )}
             </div>
           </div>
 
-          <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
-                    <th className="p-3.5 font-bold text-slate-400">Usuario</th>
-                    <th className="p-3.5 font-bold text-slate-400">Documento</th>
-                    <th className="p-3.5 font-bold text-slate-400">Teléfono</th>
-                    <th className="p-3.5 font-bold text-slate-400">Rol</th>
-                    <th className="p-3.5 font-bold text-slate-400">Estado</th>
-                    <th className="p-3.5 font-bold text-slate-400 text-right">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ divideColor: 'var(--border-glass)' }}>
-                  {users.map((u) => (
-                    <tr key={u._id || u.id} className="hover:bg-white/[0.02]">
-                      <td className="p-3.5">
-                        <span className="font-bold text-[color:var(--text-main)] block">{u.nombre} {u.apellido}</span>
-                        <span className="text-[10px] text-slate-500">{u.email}</span>
-                      </td>
-                      <td className="p-3.5 text-slate-300">{u.tipoDocumento || 'CC'}: {u.numeroDocumento}</td>
-                      <td className="p-3.5 text-slate-300">{u.telefono || 'N/A'}</td>
-                      <td className="p-3.5">
-                        <Badge color={u.rol === 'Administrador' ? 'purple' : u.rol === 'Empleado' ? 'sky' : 'orange'}>
-                          {u.rol}
-                        </Badge>
-                      </td>
-                      <td className="p-3.5">
-                        <Badge color={u.estado === 'Activo' ? 'emerald' : 'rose'}>{u.estado}</Badge>
-                      </td>
-                      <td className="p-3.5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleToggleUserStatus(u)}
-                        >
-                          {u.estado === 'Activo' ? 'Desactivar' : 'Activar'}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Sub-tabs: Empleados | Clientes */}
+          <div className="flex gap-2 border-b" style={{ borderColor: 'var(--border-glass)' }}>
+            {[{ id: 'empleados', label: `Empleados (${empleados.length})` }, { id: 'clientes', label: `Clientes (${clientes.length})` }].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setUserSubTab(t.id)}
+                className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all cursor-pointer ${
+                  userSubTab === t.id
+                    ? 'bg-purple-600 text-white'
+                    : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-main)] hover:bg-white/5'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
+
+          {/* ── TABLA EMPLEADOS ── */}
+          {userSubTab === 'empleados' && (
+            <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
+                      <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Empleado</th>
+                      <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Documento</th>
+                      <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Teléfono</th>
+                      <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Estado</th>
+                      <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px] text-right" style={{color:'#7c3aed'}}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingUsers ? (
+                      <tr><td colSpan={5} className="py-12 text-center">
+                        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-xs" style={{color:'#7c3aed'}}>Cargando empleados...</p>
+                      </td></tr>
+                    ) : empleados.length === 0 ? (
+                      <tr><td colSpan={5} className="py-12 text-center text-sm" style={{color:'#524b6e'}}>No hay empleados registrados.</td></tr>
+                    ) : empleados.filter(u => !userSearch || `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(userSearch.toLowerCase())).map((u) => (
+                      <tr key={u._id || u.id} className="border-b hover:bg-purple-500/5 transition-colors" style={{ borderColor: 'var(--border-glass)' }}>
+                        <td className="p-3.5">
+                          <span className="font-bold text-[color:var(--text-main)] block">{u.nombre} {u.apellido}</span>
+                          <span className="text-[10px] font-medium" style={{color:'#ea580c'}}>{u.email}</span>
+                        </td>
+                        <td className="p-3.5 font-semibold" style={{color:'#383252'}}>{u.tipoDocumento || 'CC'}: {u.numeroDocumento || '—'}</td>
+                        <td className="p-3.5 font-semibold" style={{color:'#383252'}}>{u.telefono || '—'}</td>
+                        <td className="p-3.5">
+                          <Badge color={u.estado === 'Activo' ? 'emerald' : 'rose'}>{u.estado}</Badge>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="xs" icon={Edit2} onClick={() => openEditUser(u)}>Editar</Button>
+                            <Button variant="ghost" size="xs" onClick={() => handleToggleUserStatus(u)}>
+                              {u.estado === 'Activo' ? 'Desactivar' : 'Activar'}
+                            </Button>
+                            <Button variant="danger" size="xs" icon={Trash2} onClick={() => handleDeleteUser(u)}>Eliminar</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── TABLA CLIENTES ── */}
+          {userSubTab === 'clientes' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl border" style={{ background: 'rgba(234,88,12,0.06)', borderColor: 'rgba(234,88,12,0.2)' }}>
+                <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0" />
+                <p className="text-xs font-semibold" style={{color:'#ea580c'}}>Los clientes sólo pueden crearse mediante el registro público. Aquí puedes editar sus datos o eliminar su cuenta.</p>
+              </div>
+              <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
+                        <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Cliente</th>
+                        <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Documento</th>
+                        <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Teléfono</th>
+                        <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px]" style={{color:'#7c3aed'}}>Estado</th>
+                        <th className="p-3.5 font-extrabold uppercase tracking-wider text-[10px] text-right" style={{color:'#7c3aed'}}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingUsers ? (
+                        <tr><td colSpan={5} className="py-12 text-center">
+                          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                          <p className="text-xs" style={{color:'#ea580c'}}>Cargando clientes...</p>
+                        </td></tr>
+                      ) : clientes.length === 0 ? (
+                        <tr><td colSpan={5} className="py-12 text-center text-sm" style={{color:'#524b6e'}}>No hay clientes registrados aún.</td></tr>
+                      ) : clientes.filter(u => !userSearch || `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(userSearch.toLowerCase())).map((u) => (
+                        <tr key={u._id || u.id} className="border-b hover:bg-orange-500/5 transition-colors" style={{ borderColor: 'var(--border-glass)' }}>
+                          <td className="p-3.5">
+                            <span className="font-bold text-[color:var(--text-main)] block">{u.nombre} {u.apellido}</span>
+                            <span className="text-[10px] font-medium" style={{color:'#ea580c'}}>{u.email}</span>
+                          </td>
+                          <td className="p-3.5 font-semibold" style={{color:'#383252'}}>{u.tipoDocumento || 'CC'}: {u.numeroDocumento || '—'}</td>
+                          <td className="p-3.5 font-semibold" style={{color:'#383252'}}>{u.telefono || '—'}</td>
+                          <td className="p-3.5">
+                            <Badge color={u.estado === 'Activo' ? 'emerald' : 'rose'}>{u.estado}</Badge>
+                          </td>
+                          <td className="p-3.5">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="xs" icon={Edit2} onClick={() => openEditUser(u)}>Editar</Button>
+                              <Button variant="ghost" size="xs" onClick={() => handleToggleUserStatus(u)}>
+                                {u.estado === 'Activo' ? 'Desactivar' : 'Activar'}
+                              </Button>
+                              <Button variant="danger" size="xs" icon={Trash2} onClick={() => handleDeleteUser(u)}>Eliminar</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MODAL PORTAL: CREAR / EDITAR EMPLEADO O CLIENTE ── */}
+          <ModalGestionUsuario
+            isOpen={isUserModalOpen}
+            onClose={() => setIsUserModalOpen(false)}
+            onSave={handleSaveUser}
+            editingUser={editingUser}
+            saving={savingUser}
+          />
         </div>
       )}
 
@@ -1130,7 +1263,7 @@ export default function AdminPanel() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-black text-[color:var(--text-main)]">Catálogo de Productos</h3>
-              <p className="text-xs text-slate-400">Administra precios, stock e inventario en tiempo real</p>
+              <p className="text-xs font-medium" style={{color:'#7c3aed'}}>Administra precios, stock e inventario en tiempo real</p>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -1155,8 +1288,8 @@ export default function AdminPanel() {
                   <Badge color="orange">{p.category}</Badge>
                   <h4 className="text-sm font-bold text-[color:var(--text-main)] mt-1.5 line-clamp-1">{p.title}</h4>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-base font-black text-orange-400">{formatCOP(p.price)}</span>
-                    <span className="text-[11px] text-slate-400 font-bold">Stock: {p.stock ?? 10} u.</span>
+                    <span className="text-base font-black text-orange-500">{formatCOP(p.price)}</span>
+                    <span className="text-[11px] font-bold" style={{color:'#7c3aed'}}>Stock: {p.stock ?? 10} u.</span>
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-white/5">

@@ -497,8 +497,8 @@ export default function Productos({ mode = 'productos' }) {
                 }}
               >
                 <div>
-                  {/* Image & Badges */}
-                  <div className="relative h-48 w-full overflow-hidden bg-black/40">
+                  {/* Image & Badges - Fondo Negro Premium para realzar el producto */}
+                  <div className="relative h-48 w-full overflow-hidden" style={{background:'#0b0f19'}}>
                     <img
                       src={prod.image}
                       alt={prod.title}
@@ -548,7 +548,7 @@ export default function Productos({ mode = 'productos' }) {
                     <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold">
                       <Star className="w-4 h-4 fill-current" />
                       <span>{prod.rating || 5.0}</span>
-                      <span className="text-slate-500 font-normal">({prod.reviews || 10} opiniones)</span>
+                      <span className="font-normal" style={{color:'#524b6e'}}>({prod.reviews || 10} opiniones)</span>
                     </div>
 
                     <p className="text-xs text-[color:var(--text-muted)] leading-relaxed line-clamp-2">

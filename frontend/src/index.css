@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* =====================================================
@@ -7,37 +7,38 @@
 ===================================================== */
 
 :root {
-  /* â”€â”€ Brand Colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  --mp-purple:       #5b21b6;
-  --mp-purple-dark:  #2e1065;
-  --mp-purple-deep:  #1a0845;
+  /* ── Brand Colors ──────────────────────────── */
+  --mp-purple:       #7c3aed;
+  --mp-purple-dark:  #5b21b6;
+  --mp-purple-deep:  #2e1065;
   --mp-purple-light: #a78bfa;
-  --mp-orange:       #f97316;
-  --mp-orange-hot:   #fb4f1a;
-  --mp-gold:         #fbbf24;
+  --mp-orange:       #ea580c;
+  --mp-orange-hot:   #f97316;
+  --mp-gold:         #f59e0b;
 
-  /* â”€â”€ Theme Variables â€” Dark Mode (Default) â”€â”€â”€â”€ */
-  --bg-main:            #08051a;
-  --text-main:          #ffffff;
-  --text-muted:         #94a3b8;
-  --bg-card:            rgba(15, 9, 42, 0.95);
-  --border-card:        rgba(255, 255, 255, 0.09);
-  --shadow-card:        0 8px 32px rgba(0, 0, 0, 0.5);
-  --bg-glass:           rgba(255, 255, 255, 0.03);
-  --border-glass:       rgba(255, 255, 255, 0.08);
-  --border-glass-hover: rgba(91, 33, 182, 0.45);
-  --bg-input:           rgba(255, 255, 255, 0.05);
-  --border-input:       rgba(255, 255, 255, 0.12);
-  --bg-input-focus:     rgba(91, 33, 182, 0.08);
+  /* ── Theme Variables — Clean Light Base (Default) ──── */
+  --bg-main:            #f8fafc;
+  --text-main:          #0f0b21;
+  --text-muted:         #383252;
+  --text-subtle:        #524b6e;
+  --bg-card:            #ffffff;
+  --border-card:        #e2e8f0;
+  --shadow-card:        0 4px 12px -2px rgba(0, 0, 0, 0.05);
+  --bg-glass:           rgba(255, 255, 255, 0.9);
+  --border-glass:       #e2e8f0;
+  --border-glass-hover: rgba(124, 58, 237, 0.35);
+  --bg-input:           #ffffff;
+  --border-input:       #cbd5e1;
+  --bg-input-focus:     rgba(124, 58, 237, 0.08);
 
-  --bg-grad-radial-1:   rgba(91, 33, 182, 0.28);
-  --bg-grad-radial-2:   rgba(249, 115, 22, 0.16);
-  --bg-grad-radial-3:   rgba(30, 8, 80, 0.6);
+  --bg-grad-radial-1:   rgba(124, 58, 237, 0.03);
+  --bg-grad-radial-2:   rgba(234, 88, 12, 0.03);
+  --bg-grad-radial-3:   transparent;
 
-  --mp-glow-purple:     rgba(91, 33, 182, 0.5);
-  --mp-glow-orange:     rgba(249, 115, 22, 0.4);
+  --mp-glow-purple:     rgba(124, 58, 237, 0.15);
+  --mp-glow-orange:     rgba(234, 88, 12, 0.15);
 
-  /* â”€â”€ Spacing Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Spacing Tokens ────────────────────────── */
   --page-px:     clamp(1rem, 4vw, 2rem);
   --page-py:     1.5rem;
   --section-gap: 1.25rem;
@@ -50,27 +51,28 @@
   scroll-behavior: smooth;
 }
 
-/* â”€â”€ Light Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Light Theme (Modern Clean & Luminous) ────────────────────── */
 .light-theme {
-  --bg-main:            #f1f5f9;
-  --text-main:          #0f172a;
-  --text-muted:         #475569;
+  --bg-main:            #f8fafc;
+  --text-main:          #0f0b21;
+  --text-muted:         #383252;
+  --text-subtle:        #524b6e;
   --bg-card:            #ffffff;
   --border-card:        #e2e8f0;
-  --shadow-card:        0 4px 20px rgba(0, 0, 0, 0.07);
-  --bg-glass:           rgba(241, 245, 249, 0.9);
+  --shadow-card:        0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --bg-glass:           rgba(255, 255, 255, 0.92);
   --border-glass:       #e2e8f0;
-  --border-glass-hover: rgba(91, 33, 182, 0.4);
-  --bg-input:           #f8fafc;
+  --border-glass-hover: rgba(124, 58, 237, 0.35);
+  --bg-input:           #ffffff;
   --border-input:       #cbd5e1;
-  --bg-input-focus:     rgba(91, 33, 182, 0.05);
+  --bg-input-focus:     rgba(124, 58, 237, 0.06);
 
-  --bg-grad-radial-1:   rgba(91, 33, 182, 0.06);
-  --bg-grad-radial-2:   rgba(249, 115, 22, 0.06);
+  --bg-grad-radial-1:   rgba(124, 58, 237, 0.05);
+  --bg-grad-radial-2:   rgba(234, 88, 12, 0.05);
   --bg-grad-radial-3:   transparent;
 
-  --mp-glow-purple:     rgba(91, 33, 182, 0.18);
-  --mp-glow-orange:     rgba(249, 115, 22, 0.18);
+  --mp-glow-purple:     rgba(124, 58, 237, 0.2);
+  --mp-glow-orange:     rgba(234, 88, 12, 0.2);
 }
 
 /* â”€â”€ Base Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -92,6 +94,30 @@ body {
 #root {
   width: 100%; min-height: 100vh;
   display: flex; flex-direction: column;
+}
+
+/* ── Textos Secundarios Legibles & Armonizados con el Logo MegaPunto ── */
+.text-brand-muted {
+  color: var(--text-muted) !important;
+}
+.text-brand-subtle {
+  color: var(--text-subtle) !important;
+}
+
+/* En áreas claras de las páginas, enriquecer los grises pálidos a un tono púrpura-grafito nítido y de alto contraste */
+.bg-white .text-slate-500,
+.bg-white .text-slate-400,
+.bg-slate-50 .text-slate-500,
+.bg-slate-50 .text-slate-400,
+.bg-\[\#f8fafc\] .text-slate-500,
+.bg-\[\#f8fafc\] .text-slate-400 {
+  color: #383252;
+}
+
+.bg-white .text-slate-600,
+.bg-slate-50 .text-slate-600,
+.bg-\[\#f8fafc\] .text-slate-600 {
+  color: #241e3b;
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -380,6 +406,16 @@ body {
 .field-input:focus { border-color: var(--border-glass-hover); box-shadow: 0 0 0 3px var(--bg-input-focus); }
 .field-input.error { border-color: rgba(251,113,133,0.6); }
 .field-error  { font-size: 0.6875rem; color: #fb7185; font-weight: 600; }
+
+/* Modal portal inputs (light theme) */
+.mp-input {
+  width: 100%; padding: 0.6rem 0.875rem; font-size: 0.8125rem; font-weight: 500;
+  border-radius: 0.625rem; outline: none; background: #f8f7ff;
+  border: 1.5px solid #e2d9f3; color: #0f0b21;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.mp-input:focus  { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.12); background: #fff; }
+.mp-input::placeholder { color: #a19cbe; font-weight: 400; }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    MISC UTILITIES
