@@ -2,7 +2,7 @@
 title Subir Megapunto a GitHub
 echo ======================================================
 echo   Subiendo Megapunto a GitHub (FastAPI + React)
-echo   Repositorio: https://github.com/arenasgomez209-alt/Megapunto-Fastapi.git
+echo   Repositorio: https://github.com/arenasgomez209-alt/MegaPunto-Final.git
 echo ======================================================
 echo.
 
@@ -19,7 +19,7 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo ======================================================
     echo   Repositorio subido con exito a GitHub!
-    echo   Enlace: https://github.com/arenasgomez209-alt/Megapunto-Fastapi
+    echo   Enlace: https://github.com/arenasgomez209-alt/MegaPunto-Final
     echo ======================================================
 ) else (
     echo.

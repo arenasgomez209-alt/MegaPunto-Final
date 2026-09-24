@@ -20,6 +20,14 @@ users_collection = database["usuarios"]
 products_collection = database["productos"]
 services_collection = database["servicios"]
 contacts_collection = database["contactos"]
+sales_collection = database["ventas"]
+sales_details_collection = database["detalle_ventas"]
+invoices_collection = database["facturas"]
+invoices_details_collection = database["detalle_facturas"]
+pqr_collection = database["pqr"]
+conversations_collection = database["conversaciones"]
+messages_collection = database["mensajes"]
+
 
 def get_database():
     return database

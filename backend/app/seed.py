@@ -4,6 +4,11 @@ from app.database import (
     users_collection,
     products_collection,
     services_collection,
+    sales_collection,
+    sales_details_collection,
+    invoices_collection,
+    invoices_details_collection,
+    pqr_collection,
     check_db_connection
 )
 from app.security import hash_password
@@ -186,6 +191,214 @@ async def seed_database():
         print(f"  [+] {len(INITIAL_SERVICES)} servicios iniciales insertados.")
     else:
         print(f"  [*] Catalogo de servicios ya cuenta con {srv_count} registros.")
+
+    # Seed Sales and Invoices if none exist
+    sales_count = await sales_collection.count_documents({})
+    if sales_count == 0:
+        print("  [+] Sembrando historial inicial de ventas y facturas para analítica...")
+        sample_sales = [
+            {
+                "numero_venta": "VTA-20260920-1001",
+                "cliente_id": "cliente_demo_1",
+                "cliente_nombre": "María Cliente",
+                "cliente_email": "cliente@megapunto.com",
+                "cliente_telefono": "3209876543",
+                "cliente_documento": "1000000003",
+                "direccion_envio": "Avenida El Poblado # 10-50, Medellín",
+                "metodo_pago": "pse",
+                "subtotal": 2850000.0,
+                "descuento": 0.0,
+                "impuestos": 541500.0,
+                "total": 3391500.0,
+                "fecha": "2026-09-20T14:30:00",
+                "estado": "Completada",
+                "items": [
+                    {
+                        "item_id": "demo_prod_1",
+                        "nombre": "Nevera Samsung No Frost 400L Inverter Digital",
+                        "tipo": "Producto",
+                        "cantidad": 1,
+                        "precio_unitario": 2850000.0,
+                        "descuento": 0.0,
+                        "subtotal": 2850000.0,
+                        "total": 2850000.0
+                    }
+                ]
+            },
+            {
+                "numero_venta": "VTA-20260921-1002",
+                "cliente_id": "cliente_demo_2",
+                "cliente_nombre": "Alejandro Torres",
+                "cliente_email": "atorres@correo.com",
+                "cliente_telefono": "3148901234",
+                "cliente_documento": "1020304050",
+                "direccion_envio": "Calle 44 # 65-10, Laureles, Medellín",
+                "metodo_pago": "card",
+                "subtotal": 1290000.0,
+                "descuento": 50000.0,
+                "impuestos": 235600.0,
+                "total": 1475600.0,
+                "fecha": "2026-09-21T11:15:00",
+                "estado": "Completada",
+                "items": [
+                    {
+                        "item_id": "demo_prod_2",
+                        "nombre": "Celular Xiaomi Redmi Note 13 Pro 256GB 5G",
+                        "tipo": "Producto",
+                        "cantidad": 1,
+                        "precio_unitario": 1290000.0,
+                        "descuento": 50000.0,
+                        "subtotal": 1240000.0,
+                        "total": 1240000.0
+                    }
+                ]
+            },
+            {
+                "numero_venta": "VTA-20260922-1003",
+                "cliente_id": "cliente_demo_3",
+                "cliente_nombre": "Diana Patricia Ríos",
+                "cliente_email": "dianarios@gmail.com",
+                "cliente_telefono": "3015558899",
+                "cliente_documento": "71345678",
+                "direccion_envio": "Carrera 80 # 32-45, Belén, Medellín",
+                "metodo_pago": "nequi",
+                "subtotal": 1150000.0,
+                "descuento": 0.0,
+                "impuestos": 218500.0,
+                "total": 1368500.0,
+                "fecha": "2026-09-22T16:45:00",
+                "estado": "Completada",
+                "items": [
+                    {
+                        "item_id": "demo_prod_3",
+                        "nombre": "Estufa Haceb 4 Puestos a Gas en Acero Inoxidable",
+                        "tipo": "Producto",
+                        "cantidad": 1,
+                        "precio_unitario": 1150000.0,
+                        "descuento": 0.0,
+                        "subtotal": 1150000.0,
+                        "total": 1150000.0
+                    }
+                ]
+            },
+            {
+                "numero_venta": "VTA-20260923-1004",
+                "cliente_id": "cliente_demo_1",
+                "cliente_nombre": "María Cliente",
+                "cliente_email": "cliente@megapunto.com",
+                "cliente_telefono": "3209876543",
+                "cliente_documento": "1000000003",
+                "direccion_envio": "Avenida El Poblado # 10-50, Medellín",
+                "metodo_pago": "contra",
+                "subtotal": 3200000.0,
+                "descuento": 100000.0,
+                "impuestos": 589000.0,
+                "total": 3689000.0,
+                "fecha": "2026-09-23T10:20:00",
+                "estado": "Completada",
+                "items": [
+                    {
+                        "item_id": "demo_prod_4",
+                        "nombre": "Lavadora Carga Frontal LG 18kg Smart AI",
+                        "tipo": "Producto",
+                        "cantidad": 1,
+                        "precio_unitario": 3200000.0,
+                        "descuento": 100000.0,
+                        "subtotal": 3100000.0,
+                        "total": 3100000.0
+                    }
+                ]
+            }
+        ]
+
+        for s in sample_sales:
+            sale_res = await sales_collection.insert_one(s)
+            sale_id = str(sale_res.inserted_id)
+
+            # Insert detalle
+            for item in s["items"]:
+                await sales_details_collection.insert_one({
+                    "venta_id": sale_id,
+                    "numero_venta": s["numero_venta"],
+                    **item,
+                    "fecha": s["fecha"]
+                })
+
+            # Insert corresponding invoice
+            inv_num = f"FAC-{s['numero_venta'].split('-')[1]}-{s['numero_venta'].split('-')[2]}"
+            await invoices_collection.insert_one({
+                "numero_factura": inv_num,
+                "venta_id": sale_id,
+                "numero_venta": s["numero_venta"],
+                "fecha_emision": s["fecha"],
+                "cliente": {
+                    "id": s["cliente_id"],
+                    "nombre": s["cliente_nombre"],
+                    "email": s["cliente_email"],
+                    "telefono": s["cliente_telefono"],
+                    "documento": s["cliente_documento"],
+                    "direccion": s["direccion_envio"]
+                },
+                "items": s["items"],
+                "subtotal": s["subtotal"],
+                "impuestos": s["impuestos"],
+                "descuento": s["descuento"],
+                "total": s["total"],
+                "metodo_pago": s["metodo_pago"],
+                "estado": "Pagada"
+            })
+        print("  [+] Ventas y facturas sembradas exitosamente.")
+
+    # Seed Sample PQRs if none exist
+    pqr_count = await pqr_collection.count_documents({})
+    if pqr_count == 0:
+        print("  [+] Sembrando solicitudes PQR de demostración...")
+        sample_pqrs = [
+            {
+                "radicado": "PQR-20260920-5001",
+                "cliente_id": "cliente_demo_1",
+                "cliente_nombre": "María Cliente",
+                "cliente_email": "cliente@megapunto.com",
+                "tipo": "Petición",
+                "asunto": "Solicitud de instalación técnica para Nevera Samsung",
+                "descripcion": "Compré una nevera Samsung y requiero coordinar el día de la instalación con el técnico certificado en mi domicilio.",
+                "estado": "Respondida",
+                "respuesta": "Estimada María, un técnico certificado se pondrá en contacto contigo en las próximas 24 horas para agendar la visita.",
+                "atendido_por": "Carlos Empleado",
+                "fecha_creacion": "2026-09-20T15:00:00",
+                "fecha_respuesta": "2026-09-21T09:30:00"
+            },
+            {
+                "radicado": "PQR-20260922-5002",
+                "cliente_id": "cliente_demo_2",
+                "cliente_nombre": "Alejandro Torres",
+                "cliente_email": "atorres@correo.com",
+                "tipo": "Queja",
+                "asunto": "Demora leve en la entrega del pedido",
+                "descripcion": "El transportador llegó después de las 6:00 PM y no me avisó con anticipación por mensaje de texto.",
+                "estado": "En Proceso",
+                "respuesta": "Se elevó la observación con la empresa de mensajería para optimizar las notificaciones de ruta.",
+                "atendido_por": "Juan Administrador",
+                "fecha_creacion": "2026-09-22T17:10:00",
+                "fecha_respuesta": None
+            },
+            {
+                "radicado": "PQR-20260923-5003",
+                "cliente_id": "cliente_demo_3",
+                "cliente_nombre": "Diana Patricia Ríos",
+                "cliente_email": "dianarios@gmail.com",
+                "tipo": "Petición",
+                "asunto": "Copia de factura electrónica en formato PDF",
+                "descripcion": "Requiero copia de la factura con desglose de IVA para efectos contables de mi empresa.",
+                "estado": "Pendiente",
+                "respuesta": None,
+                "atendido_por": None,
+                "fecha_creacion": "2026-09-23T11:00:00",
+                "fecha_respuesta": None
+            }
+        ]
+        await pqr_collection.insert_many(sample_pqrs)
+        print("  [+] PQRs iniciales sembradas con éxito.")
 
     print("[SEED] Sembrado completado con exito.")
 

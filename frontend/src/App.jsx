@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import WhatsAppButton from './components/WhatsAppButton.jsx';
 import CartModal from './components/CartModal.jsx';
+import ChatbotWidget from './components/ChatbotWidget.jsx';
 import Index from './pages/Index.jsx';
 import QuienesSomos from './pages/quienes_s.jsx';
 import Productos from './pages/productos.jsx';
@@ -24,6 +25,10 @@ import { CartProvider } from './context/CartContext.jsx';
 function MainApp() {
   const { currentUser, isAdmin, isEmpleado } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const location = useLocation();
+
+  // Detect if current path is a panel (Admin, Empleado, or Cliente)
+  const isPanelRoute = ['/admin', '/empleado', '/cliente'].some(p => location.pathname.startsWith(p));
   
   // Modals visibility state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -60,18 +65,20 @@ function MainApp() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen font-sans" style={{ fontFamily: "'Outfit', 'Inter', system-ui, sans-serif" }}>
+    <div className={`flex flex-col ${isPanelRoute ? 'h-screen overflow-hidden' : 'min-h-screen'} font-sans`} style={{ fontFamily: "'Outfit', 'Inter', system-ui, sans-serif" }}>
       
-      {/* Global Header with Role Awareness */}
-      <Header
-        onOpenLogin={handleOpenLogin}
-        onOpenRegister={handleOpenRegister}
-        isDarkMode={isDarkMode}
-        toggleTheme={toggleTheme}
-      />
+      {/* Global Header with Role Awareness - Hidden in Panels */}
+      {!isPanelRoute && (
+        <Header
+          onOpenLogin={handleOpenLogin}
+          onOpenRegister={handleOpenRegister}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+        />
+      )}
       
       {/* Main Content Area */}
-      <main className="flex-1 w-full">
+      <main className={`flex-1 w-full ${isPanelRoute ? 'h-full overflow-hidden' : ''}`}>
         <Routes>
           <Route 
             path="/" 
@@ -166,11 +173,14 @@ function MainApp() {
         </Routes>
       </main>
 
-      {/* Reusable Floating WhatsApp Component (PDF Req #15) */}
-      <WhatsAppButton />
+      {/* Reusable Floating WhatsApp Component - Hidden in Panels */}
+      {!isPanelRoute && <WhatsAppButton />}
 
-      {/* Global Footer */}
-      <Footer />
+      {/* Global Footer - Hidden in Panels */}
+      {!isPanelRoute && <Footer />}
+
+      {/* Intelligent AI Chatbot Widget */}
+      <ChatbotWidget />
 
       {/* Global Cart Modal */}
       <CartModal />

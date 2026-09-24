@@ -108,3 +108,99 @@ export const contactAPI = {
     apiFetch(`/contacto/${id}/status`, { method: 'PATCH', body: JSON.stringify({ estado }) })
 };
 
+// Helper para descargar archivos binarios (PDFs / Excel)
+export const downloadFile = async (url, defaultFilename) => {
+  try {
+    const token = localStorage.getItem('megapunto_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`http://localhost:8000${url}`, { headers });
+    if (!res.ok) throw new Error('Error al descargar archivo');
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = defaultFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    return true;
+  } catch (err) {
+    console.error('Error al descargar archivo:', err);
+    return false;
+  }
+};
+
+export const salesAPI = {
+  create: (saleData) =>
+    apiFetch('/ventas', { method: 'POST', body: JSON.stringify(saleData) }),
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/ventas${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+  getById: (id) =>
+    apiFetch(`/ventas/${id}`, { method: 'GET' }),
+  getByClient: (clienteId) =>
+    apiFetch(`/ventas/cliente/${clienteId}`, { method: 'GET' })
+};
+
+export const invoicesAPI = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/facturas${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+  getById: (id) =>
+    apiFetch(`/facturas/${id}`, { method: 'GET' }),
+  getByClient: (clienteId) =>
+    apiFetch(`/facturas/cliente/${clienteId}`, { method: 'GET' }),
+  downloadPdf: (id, invoiceNum = 'FAC') =>
+    downloadFile(`/api/facturas/${id}/pdf`, `Factura_${invoiceNum}.pdf`)
+};
+
+export const reportsAPI = {
+  getDaily: (fecha) => {
+    const query = fecha ? `?fecha=${fecha}` : '';
+    return apiFetch(`/reportes/ventas/diario${query}`, { method: 'GET' });
+  },
+  downloadDailyPdf: (fecha) =>
+    downloadFile(`/api/reportes/ventas/diario/pdf?fecha=${fecha || ''}`, `Reporte_Ventas_${fecha || 'hoy'}.pdf`),
+  downloadDailyExcel: (fecha) =>
+    downloadFile(`/api/reportes/ventas/diario/excel?fecha=${fecha || ''}`, `Reporte_Ventas_${fecha || 'hoy'}.xlsx`)
+};
+
+export const dashboardAPI = {
+  getStats: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/dashboard/stats${query ? `?${query}` : ''}`, { method: 'GET' });
+  }
+};
+
+export const pqrAPI = {
+  create: (pqrData, user = {}) => {
+    const params = new URLSearchParams();
+    if (user.id || user._id) params.append('cliente_id', user.id || user._id);
+    if (user.nombre) params.append('cliente_nombre', `${user.nombre} ${user.apellido || ''}`.trim());
+    if (user.email) params.append('cliente_email', user.email);
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch(`/pqr${q}`, { method: 'POST', body: JSON.stringify(pqrData) });
+  },
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiFetch(`/pqr${query ? `?${query}` : ''}`, { method: 'GET' });
+  },
+  getByClient: (clienteId) =>
+    apiFetch(`/pqr/cliente/${clienteId}`, { method: 'GET' }),
+  getById: (id) =>
+    apiFetch(`/pqr/${id}`, { method: 'GET' }),
+  updateStatus: (id, data, atendidoPor) => {
+    const q = atendidoPor ? `?atendido_por=${encodeURIComponent(atendidoPor)}` : '';
+    return apiFetch(`/pqr/${id}/estado${q}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+};
+
+export const chatbotAPI = {
+  sendMessage: (payload) =>
+    apiFetch('/chatbot/chat', { method: 'POST', body: JSON.stringify(payload) })
+};
+
+

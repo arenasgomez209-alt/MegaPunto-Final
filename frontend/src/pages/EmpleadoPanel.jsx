@@ -1,714 +1,566 @@
 import React, { useState, useEffect } from 'react';
 import {
+  ShoppingBag,
+  Package,
+  MessageSquare,
   Users,
   Search,
   Plus,
-  Mail,
-  Phone,
+  Edit2,
   CheckCircle,
-  AlertTriangle,
-  RefreshCw,
-  ShoppingBag,
-  MessageSquare,
-  Truck,
-  Eye,
-  Shield,
   Clock,
   Send,
-  Sparkles,
-  ExternalLink,
-  MapPin,
-  FileText,
-  Edit2
+  Eye,
+  Download,
+  AlertTriangle,
+  Mail,
+  Phone,
+  X
 } from 'lucide-react';
-import { usersAPI, contactAPI, productsAPI } from '../services/api.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import {
+  usersAPI,
+  productsAPI,
+  salesAPI,
+  invoicesAPI,
+  pqrAPI,
+  contactAPI,
+  dashboardAPI
+} from '../services/api.js';
+import DashboardLayout from '../components/DashboardLayout.jsx';
 import Button from '../components/Button.jsx';
+import Input from '../components/Input.jsx';
 import ModalCrearProducto from '../components/ModalCrearProducto.jsx';
-import PageHeader from '../components/PageHeader.jsx';
 import Toast from '../components/Toast.jsx';
 import StatCard from '../components/StatCard.jsx';
 import Badge from '../components/Badge.jsx';
 
 export default function EmpleadoPanel() {
-  const { currentUser } = useAuth();
-
-  const [activeTab, setActiveTab] = useState('clientes'); // 'clientes' | 'mensajes' | 'despachos' | 'productos'
-  const [users, setUsers] = useState([]);
-  const [contactMessages, setContactMessages] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(true);
-
-  // Products state for viewing & editing
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productSearch, setProductSearch] = useState('');
-  const [productCategoryFilter, setProductCategoryFilter] = useState('Todos');
-  const [editingProduct, setEditingProduct] = useState(null);
-
-  // Search & Filter state for Customers (Read-Only)
-  const [userSearch, setUserSearch] = useState('');
-  const [userStatusFilter, setUserStatusFilter] = useState('Todos');
-
-  // Contact message state
-  const [messageFilter, setMessageFilter] = useState('Todos');
-
-  // Modal for adding/editing products
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-
-  // Selected customer for detail drawer
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('operativo'); // 'operativo' | 'ventas' | 'pqr' | 'productos' | 'clientes' | 'mensajes'
 
   const [notification, setNotification] = useState(null);
-
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Fetch users (Read-Only)
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    const res = await usersAPI.getAll({
-      search: userSearch,
-      estado: userStatusFilter
-    });
-    setLoadingUsers(false);
-    if (res.ok && res.data.success) {
-      setUsers(res.data.users);
-    }
-  };
+  const formatCOP = (num) =>
+    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(num || 0);
 
-  // Fetch contact messages
-  const fetchContactMessages = async () => {
-    setLoadingMessages(true);
-    const res = await contactAPI.getAll({
-      estado: messageFilter
+  // ────────────────── TAB 1: OPERATIVO ──────────────────
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    dashboardAPI.getStats().then(res => {
+      if (res.ok && res.data?.success) setStats(res.data);
     });
-    setLoadingMessages(false);
-    if (res.ok && res.data.success) {
-      setContactMessages(res.data.messages);
-    }
-  };
+  }, []);
 
-  // Fetch products for employee editing
-  const fetchProducts = async () => {
-    setLoadingProducts(true);
-    const res = await productsAPI.getAll({
-      search: productSearch,
-      category: productCategoryFilter
-    });
-    setLoadingProducts(false);
-    if (res.ok && res.data.success) {
-      setProducts(res.data.products);
-    }
+  // ────────────────── TAB 2: VENTAS Y FACTURAS ──────────────────
+  const [sales, setSales] = useState([]);
+  const [salesSearch, setSalesSearch] = useState('');
+  const [downloadingInv, setDownloadingInv] = useState(null);
+
+  const fetchSales = async () => {
+    const res = await salesAPI.getAll({ search: salesSearch });
+    if (res.ok && res.data?.sales) setSales(res.data.sales);
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, [userStatusFilter]);
+    if (activeTab === 'ventas') fetchSales();
+  }, [activeTab, salesSearch]);
+
+  const handleDownloadInvoice = async (sale) => {
+    setDownloadingInv(sale.numero_venta);
+    const ok = await invoicesAPI.downloadPdf(sale.numero_venta, sale.numero_venta);
+    setDownloadingInv(null);
+    if (ok) showToast('Factura descargada en PDF.');
+    else showToast('Error al descargar factura.', 'error');
+  };
+
+  // ────────────────── TAB 3: PQR ──────────────────
+  const [pqrs, setPqrs] = useState([]);
+  const [pqrFilter, setPqrFilter] = useState('Todos');
+  const [replyingPqr, setReplyingPqr] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyStatus, setReplyStatus] = useState('Respondida');
+
+  const fetchPqrs = async () => {
+    const params = pqrFilter !== 'Todos' ? { estado: pqrFilter } : {};
+    const res = await pqrAPI.getAll(params);
+    if (res.ok && res.data?.pqrs) setPqrs(res.data.pqrs);
+  };
 
   useEffect(() => {
-    fetchContactMessages();
-  }, [messageFilter]);
+    if (activeTab === 'pqr') fetchPqrs();
+  }, [activeTab, pqrFilter]);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [productCategoryFilter]);
-
-  // Update contact message status
-  const handleUpdateMessageStatus = async (msgId, newStatus) => {
-    const res = await contactAPI.updateStatus(msgId, newStatus);
-    if (res.ok && res.data.success) {
-      showToast(`Consulta marcada como: ${newStatus}`);
-      fetchContactMessages();
+  const handleSavePqrReply = async () => {
+    if (!replyingPqr) return;
+    const res = await pqrAPI.updateStatus(
+      replyingPqr.id || replyingPqr._id,
+      { estado: replyStatus, respuesta: replyText },
+      'Carlos Empleado'
+    );
+    if (res.ok && res.data?.success) {
+      showToast(`PQR ${replyingPqr.radicado} respondida con éxito.`);
+      setReplyingPqr(null);
+      setReplyText('');
+      fetchPqrs();
     } else {
-      showToast(res.data?.message || 'Error al actualizar', 'error');
+      showToast('Error al actualizar PQR.', 'error');
     }
   };
 
-  const clientUsers = users.filter(u => u.rol === 'Cliente' || u.rol === 'Usuario');
-  const pendingMessages = contactMessages.filter(m => m.estado === 'Pendiente').length;
+  // ────────────────── TAB 4: PRODUCTOS ──────────────────
+  const [products, setProducts] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+
+  const fetchProducts = async () => {
+    const res = await productsAPI.getAll({ search: productSearch });
+    if (res.ok && res.data?.success) setProducts(res.data.products);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'productos') fetchProducts();
+  }, [activeTab, productSearch]);
+
+  // ────────────────── TAB 5: CLIENTES ──────────────────
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState('');
+
+  const fetchClients = async () => {
+    const res = await usersAPI.getAll({ search: clientSearch, rol: 'Cliente' });
+    if (res.ok && res.data?.success) setClients(res.data.users);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'clientes') fetchClients();
+  }, [activeTab, clientSearch]);
+
+  // ────────────────── TAB 6: MENSAJES DE CONTACTO ──────────────────
+  const [messages, setMessages] = useState([]);
+  const fetchMessages = async () => {
+    const res = await contactAPI.getAll();
+    if (res.ok && res.data?.messages) setMessages(res.data.messages);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'mensajes') fetchMessages();
+  }, [activeTab]);
+
+  const handleUpdateMessageStatus = async (id, estado) => {
+    const res = await contactAPI.updateStatus(id, estado);
+    if (res.ok) {
+      showToast(`Mensaje marcado como ${estado}.`);
+      fetchMessages();
+    }
+  };
+
+  const sidebarTabs = [
+    { id: 'operativo', label: 'Dashboard Operativo', icon: ShoppingBag },
+    { id: 'ventas', label: 'Ventas y Facturas', icon: Package, badge: stats?.total_ventas },
+    { id: 'pqr', label: 'Atención de PQR', icon: MessageSquare, badge: stats?.pqr_pendientes ? `${stats.pqr_pendientes} pend.` : undefined },
+    { id: 'productos', label: 'Control de Inventario', icon: Package },
+    { id: 'clientes', label: 'Directorio de Clientes', icon: Users },
+    { id: 'mensajes', label: 'Mensajes Web', icon: Mail }
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5 animate-fadeIn">
-      {/* Toast Notification */}
-      {notification && (
-        <Toast
-          message={notification.msg}
-          type={notification.type}
-          onClose={() => setNotification(null)}
-        />
+    <DashboardLayout
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      tabs={sidebarTabs}
+      title="Panel de Operaciones y Ventas"
+      subtitle="Gestión de despachos, pedidos, facturas y atención de solicitudes PQR"
+      roleName="Empleado"
+    >
+      {notification && <Toast message={notification.msg} type={notification.type} />}
+
+      {/* ── TAB 1: OPERATIVO ── */}
+      {activeTab === 'operativo' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard
+              title="Ventas del Día"
+              value={stats?.ventas_hoy || 0}
+              icon={ShoppingBag}
+              color="orange"
+            />
+            <StatCard
+              title="Facturación Hoy"
+              value={formatCOP(stats?.facturacion_hoy)}
+              icon={ShoppingBag}
+              color="emerald"
+            />
+            <StatCard
+              title="PQR Pendientes"
+              value={stats?.pqr_pendientes || 0}
+              icon={AlertTriangle}
+              color="rose"
+            />
+            <StatCard
+              title="Productos en Catálogo"
+              value={stats?.total_productos || 0}
+              icon={Package}
+              color="blue"
+            />
+          </div>
+
+          <div className="p-6 rounded-2xl border space-y-3"
+               style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+            <h3 className="text-sm font-black text-[color:var(--text-main)] uppercase tracking-wider">
+              Guía Operativa para Empleados
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl border space-y-1.5" style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+                <span className="font-bold text-orange-400 block">1. Despachos y Facturas</span>
+                <p className="text-slate-300 leading-relaxed">
+                  Consulta el módulo de **Ventas y Facturas** para descargar la factura oficial en PDF de cada compra y alistarla junto al paquete.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border space-y-1.5" style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+                <span className="font-bold text-sky-400 block">2. Atención de PQR</span>
+                <p className="text-slate-300 leading-relaxed">
+                  Revisa oportunamente las **PQR Pendientes**. Recuerda que por ley se debe dar respuesta oportuna a los usuarios.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border space-y-1.5" style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+                <span className="font-bold text-emerald-400 block">3. Control de Stock</span>
+                <p className="text-slate-300 leading-relaxed">
+                  Mantén actualizado el inventario en **Control de Inventario** para evitar quiebres de stock en la tienda pública.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Header */}
-      <PageHeader
-        title="Panel de Operaciones y Clientes"
-        description={`Bienvenido, ${currentUser?.nombre || 'Empleado'}. Gestiona la atención al cliente, consulta el directorio de usuarios y edita o publica productos del catálogo.`}
-        badgeText="Estación de Trabajo · Empleado MEGAPUNTO"
-        badgeIcon={Shield}
-        badgeColor="sky"
-        actions={
-          <>
-            <button
-              onClick={() => { fetchUsers(); fetchContactMessages(); fetchProducts(); }}
-              className="p-2 rounded-xl border transition-all hover:scale-105 cursor-pointer shadow-sm bg-white/5 border-white/10"
-              title="Refrescar datos"
+      {/* ── TAB 2: VENTAS Y FACTURAS ── */}
+      {activeTab === 'ventas' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-[color:var(--text-main)]">Gestión de Ventas y Pedidos</h3>
+              <p className="text-xs text-slate-400">Consulta de pedidos y descarga directa de facturas para despacho</p>
+            </div>
+            <div className="w-full sm:w-72">
+              <Input
+                placeholder="Buscar venta o cliente..."
+                value={salesSearch}
+                onChange={(e) => setSalesSearch(e.target.value)}
+                icon={Search}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
+                    <th className="p-3.5 font-bold text-slate-400">Nº Venta</th>
+                    <th className="p-3.5 font-bold text-slate-400">Fecha</th>
+                    <th className="p-3.5 font-bold text-slate-400">Cliente</th>
+                    <th className="p-3.5 font-bold text-slate-400">Total</th>
+                    <th className="p-3.5 font-bold text-slate-400">Estado</th>
+                    <th className="p-3.5 font-bold text-slate-400 text-right">Factura PDF</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ divideColor: 'var(--border-glass)' }}>
+                  {sales.map((s) => (
+                    <tr key={s._id || s.id} className="hover:bg-white/[0.02]">
+                      <td className="p-3.5 font-mono font-bold text-orange-400">{s.numero_venta}</td>
+                      <td className="p-3.5 text-slate-300">{s.fecha?.slice(0, 10)} {s.fecha?.slice(11, 16)}</td>
+                      <td className="p-3.5">
+                        <span className="font-bold text-[color:var(--text-main)] block">{s.cliente_nombre}</span>
+                        <span className="text-[10px] text-slate-500">{s.cliente_email}</span>
+                      </td>
+                      <td className="p-3.5 font-black text-emerald-400">{formatCOP(s.total)}</td>
+                      <td className="p-3.5"><Badge color="emerald">{s.estado}</Badge></td>
+                      <td className="p-3.5 text-right">
+                        <Button
+                          variant="emerald"
+                          size="xs"
+                          icon={Download}
+                          disabled={downloadingInv === s.numero_venta}
+                          onClick={() => handleDownloadInvoice(s)}
+                        >
+                          {downloadingInv === s.numero_venta ? 'Descargando...' : 'Factura PDF'}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: ATENCIÓN DE PQR ── */}
+      {activeTab === 'pqr' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-[color:var(--text-main)]">Atención a Solicitudes PQR</h3>
+              <p className="text-xs text-slate-400">Responde y actualiza el estado de las peticiones de los clientes</p>
+            </div>
+            <select
+              value={pqrFilter}
+              onChange={(e) => setPqrFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl border outline-none text-xs font-bold"
+              style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
             >
-              <RefreshCw className="w-4 h-4 text-sky-400" />
-            </button>
+              <option value="Todos">Todos los Estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Proceso">En Proceso</option>
+              <option value="Respondida">Respondida</option>
+              <option value="Cerrada">Cerrada</option>
+            </select>
+          </div>
+
+          <div className="space-y-4">
+            {pqrs.map((p) => (
+              <div key={p._id || p.id} className="p-5 rounded-2xl border space-y-3"
+                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-extrabold text-orange-400 px-2 py-0.5 rounded bg-orange-500/10">
+                      {p.radicado}
+                    </span>
+                    <Badge color={p.estado === 'Respondida' ? 'emerald' : p.estado === 'En Proceso' ? 'sky' : 'rose'}>
+                      {p.estado}
+                    </Badge>
+                    <h4 className="text-sm font-bold text-[color:var(--text-main)]">{p.asunto}</h4>
+                  </div>
+                  <span className="text-[11px] text-slate-400">{p.fecha_creacion?.slice(0, 10)}</span>
+                </div>
+
+                <p className="text-xs text-slate-300 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                  {p.descripcion}
+                </p>
+
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                  <span className="text-slate-400">Cliente: <strong className="text-white">{p.cliente_nombre}</strong> ({p.cliente_email})</span>
+                  <Button
+                    variant="orange"
+                    size="xs"
+                    icon={Send}
+                    onClick={() => {
+                      setReplyingPqr(p);
+                      setReplyText(p.respuesta || '');
+                      setReplyStatus(p.estado || 'Respondida');
+                    }}
+                  >
+                    {p.respuesta ? 'Modificar Respuesta' : 'Responder PQR'}
+                  </Button>
+                </div>
+
+                {p.respuesta && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200">
+                    <span className="font-bold text-emerald-400 block mb-0.5">Respuesta Oficial brindada:</span>
+                    <p>{p.respuesta}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {replyingPqr && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+                 onClick={() => setReplyingPqr(null)}>
+              <div className="w-full max-w-lg rounded-3xl border p-6 space-y-4"
+                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}
+                   onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <h3 className="text-base font-black text-[color:var(--text-main)]">
+                    Atención de PQR: {replyingPqr.radicado}
+                  </h3>
+                  <button onClick={() => setReplyingPqr(null)} className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <label className="text-slate-400 font-bold block">Estado:</label>
+                  <select
+                    value={replyStatus}
+                    onChange={(e) => setReplyStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border outline-none text-xs"
+                    style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
+                  >
+                    <option value="En Proceso">En Proceso</option>
+                    <option value="Respondida">Respondida</option>
+                    <option value="Cerrada">Cerrada</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <label className="text-slate-400 font-bold block">Respuesta para el Cliente:</label>
+                  <textarea
+                    rows={4}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Escribe la respuesta formal..."
+                    className="w-full p-3 rounded-xl border outline-none text-xs"
+                    style={{ background: 'var(--bg-input)', borderColor: 'var(--border-input)', color: 'var(--text-main)' }}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                  <Button variant="ghost" size="sm" onClick={() => setReplyingPqr(null)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="orange" size="sm" icon={CheckCircle} onClick={handleSavePqrReply}>
+                    Guardar Respuesta
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 4: PRODUCTOS ── */}
+      {activeTab === 'productos' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-[color:var(--text-main)]">Control de Inventario y Stock</h3>
+              <p className="text-xs text-slate-400">Actualiza existencias y precios del catálogo comercial</p>
+            </div>
             <Button
               variant="orange"
-              size="md"
+              size="sm"
               icon={Plus}
-              onClick={() => {
-                setEditingProduct(null);
-                setIsProductModalOpen(true);
-              }}
+              onClick={() => { setEditingProduct(null); setIsProductModalOpen(true); }}
             >
               Nuevo Producto
             </Button>
-          </>
-        }
-      />
-
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          icon={Users}
-          iconColor="text-sky-400"
-          iconBg="rgba(56, 189, 248, 0.15)"
-          label="Directorio de Clientes"
-          value={clientUsers.length}
-          sublabel="Modo Consulta (Solo Lectura)"
-          sublabelColor="text-sky-400"
-        />
-        <StatCard
-          icon={ShoppingBag}
-          iconColor="text-amber-400"
-          iconBg="rgba(245, 158, 11, 0.15)"
-          label="Catálogo de Productos"
-          value={products.length}
-          valueColor="text-amber-400"
-          sublabel="Permiso de Edición Activo"
-          sublabelColor="text-amber-400"
-        />
-        <StatCard
-          icon={MessageSquare}
-          iconColor="text-orange-400"
-          iconBg="rgba(249, 115, 22, 0.15)"
-          label="Consultas de Contacto"
-          value={contactMessages.length}
-          valueColor="text-orange-400"
-          sublabel={`${pendingMessages} mensajes pendientes`}
-          sublabelColor="text-rose-400"
-        />
-      </div>
-
-      {/* Tabs Selector */}
-      <div className="flex items-center gap-3 border-b pb-1 overflow-x-auto" style={{ borderColor: 'var(--border-glass)' }}>
-        <button
-          onClick={() => { setActiveTab('productos'); fetchProducts(); }}
-          className={`px-4 py-2 rounded-xl text-[13px] font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-            activeTab === 'productos'
-              ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4" />
-          Gestión de Productos ({products.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('clientes')}
-          className={`px-4 py-2 rounded-xl text-[13px] font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-            activeTab === 'clientes'
-              ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Directorio de Clientes ({clientUsers.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('mensajes')}
-          className={`px-4 py-2 rounded-xl text-[13px] font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-            activeTab === 'mensajes'
-              ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          Consultas de Clientes ({contactMessages.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('despachos')}
-          className={`px-4 py-2 rounded-xl text-[13px] font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-            activeTab === 'despachos'
-              ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Truck className="w-4 h-4" />
-          Control de Despachos
-        </button>
-      </div>
-
-      {/* TAB 1: DIRECTORIO DE CLIENTES (SOLO LECTURA) */}
-      {activeTab === 'clientes' && (
-        <div className="space-y-6 animate-fadeInUp">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl border shadow-sm" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <div className="flex items-center gap-2 w-full md:w-auto flex-1 max-w-md">
-              <div className="relative w-full">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar cliente por nombre, documento o correo..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl outline-none"
-                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-main)' }}
-                />
-              </div>
-              <button
-                onClick={fetchUsers}
-                className="px-4 py-2.5 text-xs font-bold rounded-xl bg-sky-600 text-white cursor-pointer hover:bg-sky-700 shadow"
-              >
-                Buscar
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] font-bold text-slate-400 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
-                🔒 Permiso: Solo Consulta
-              </span>
-            </div>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <table className="w-full text-left text-xs">
-              <thead className="border-b text-[11px]" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
-                <tr>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Cliente</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Identificación</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Teléfono / WhatsApp</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Dirección de Entrega</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Estado</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider text-right">Contacto</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: 'var(--border-glass)' }}>
-                {loadingUsers ? (
-                  <tr>
-                    <td colSpan="6" className="p-8 text-center text-slate-400">
-                      Cargando directorio de clientes...
-                    </td>
-                  </tr>
-                ) : clientUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="p-8 text-center text-slate-400">
-                      No se encontraron clientes registrados.
-                    </td>
-                  </tr>
-                ) : (
-                  clientUsers.map((u) => (
-                    <tr key={u._id} className="hover:bg-white/[0.04] transition-colors">
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs text-white shadow" style={{ background: 'linear-gradient(135deg, #ea580c, #f97316)' }}>
-                            {u.nombre ? u.nombre.charAt(0).toUpperCase() : 'C'}
-                          </div>
-                          <div>
-                            <span className="font-bold text-[color:var(--text-main)] block text-sm">
-                              {u.nombre} {u.apellido}
-                            </span>
-                            <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                              <Mail className="w-3 h-3" /> {u.email}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-3 py-2.5 text-slate-300 font-medium">
-                        <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] mr-1.5 font-bold">
-                          {u.tipoDocumento || 'CC'}
-                        </span>
-                        {u.numeroDocumento}
-                      </td>
-
-                      <td className="px-3 py-2.5 text-slate-300">
-                        <a
-                          href={`https://wa.me/57${u.telefono.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
-                          title="Abrir chat en WhatsApp"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>{u.telefono}</span>
-                        </a>
-                      </td>
-
-                      <td className="px-3 py-2.5 text-slate-300">
-                        <div className="flex items-center gap-1 text-[11px] text-slate-400 max-w-xs truncate">
-                          <MapPin className="w-3 h-3 text-orange-400 shrink-0" />
-                          <span>{u.direccion}</span>
-                        </div>
-                      </td>
-
-                      <td className="px-3 py-2.5">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                          u.estado === 'Activo' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                        }`}>
-                          {u.estado}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          onClick={() => setSelectedUser(u)}
-                          className="px-3 py-1.5 rounded-xl bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 border border-sky-500/30 text-xs font-bold transition-all flex items-center gap-1.5 ml-auto cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Ver Ficha
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: CONSULTAS Y MENSAJES DE CONTACTO */}
-      {activeTab === 'mensajes' && (
-        <div className="space-y-6 animate-fadeInUp">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl border shadow-sm" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-400">Filtrar por estado:</span>
-              <div className="flex rounded-xl p-1 bg-black/20 border border-white/10">
-                {['Todos', 'Pendiente', 'En Gestión', 'Atendido'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setMessageFilter(st)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      messageFilter === st ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <span className="text-xs font-bold text-slate-400">
-              Total consultas: <strong className="text-orange-400">{contactMessages.length}</strong>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {loadingMessages ? (
-              <div className="col-span-full py-12 text-center text-slate-400">
-                Cargando mensajes de contacto desde MongoDB...
-              </div>
-            ) : contactMessages.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-slate-400 rounded-3xl border border-dashed p-8">
-                No hay consultas registradas con este filtro.
-              </div>
-            ) : (
-              contactMessages.map((msg) => (
-                <div
-                  key={msg._id}
-                  className="p-6 rounded-3xl border flex flex-col justify-between space-y-4 shadow-xl"
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        msg.estado === 'Pendiente'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : msg.estado === 'En Gestión'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}>
-                        {msg.estado}
-                      </span>
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(msg.createdAt).toLocaleString('es-CO')}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="text-base font-black text-[color:var(--text-main)]">{msg.asunto || 'Consulta General'}</h4>
-                      <p className="text-xs text-orange-400 font-bold mt-0.5">{msg.nombre} ({msg.email})</p>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 text-xs text-slate-300 leading-relaxed">
-                      "{msg.mensaje}"
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: 'var(--border-glass)' }}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleUpdateMessageStatus(msg._id, 'En Gestión')}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 cursor-pointer"
-                      >
-                        En Gestión
-                      </button>
-                      <button
-                        onClick={() => handleUpdateMessageStatus(msg._id, 'Atendido')}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30 cursor-pointer"
-                      >
-                        Marcar Atendido
-                      </button>
-                    </div>
-
-                    <a
-                      href={`mailto:${msg.email}?subject=Respuesta%20MEGAPUNTO:%20${encodeURIComponent(msg.asunto || 'Consulta')}`}
-                      className="px-3 py-1.5 rounded-xl bg-orange-600 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-orange-700 transition-colors shadow"
-                    >
-                      <Send className="w-3 h-3" /> Responder
-                    </a>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {products.map((p) => (
+              <div key={p._id || p.id} className="p-4 rounded-2xl border space-y-3"
+                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+                <div className="h-40 rounded-xl overflow-hidden bg-slate-800">
+                  <img src={p.image} alt={p.title} className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <Badge color="orange">{p.category}</Badge>
+                  <h4 className="text-sm font-bold text-[color:var(--text-main)] mt-1 line-clamp-1">{p.title}</h4>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-base font-black text-orange-400">{formatCOP(p.price)}</span>
+                    <span className="text-xs font-bold text-slate-300">Stock: {p.stock ?? 10} u.</span>
                   </div>
                 </div>
-              ))
-            )}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  icon={Edit2}
+                  className="w-full"
+                  onClick={() => { setEditingProduct(p); setIsProductModalOpen(true); }}
+                >
+                  Editar Información / Stock
+                </Button>
+              </div>
+            ))}
           </div>
+
+          <ModalCrearProducto
+            isOpen={isProductModalOpen}
+            onClose={() => { setIsProductModalOpen(false); setEditingProduct(null); }}
+            onProductCreated={() => { setIsProductModalOpen(false); fetchProducts(); }}
+            editingProduct={editingProduct}
+          />
         </div>
       )}
 
-      {/* TAB 3: CONTROL DE DESPACHOS */}
-      {activeTab === 'despachos' && (
-        <div className="space-y-6 animate-fadeInUp">
-          <div className="p-6 sm:p-8 rounded-3xl border space-y-4 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <h3 className="text-lg font-black text-[color:var(--text-main)] flex items-center gap-2">
-              <Truck className="w-5 h-5 text-purple-400" /> Monitoreo y Salida de Pedidos
-            </h3>
-            <p className="text-xs text-slate-400">
-              Registro logístico de despachos desde la bodega principal en Medellín para envíos nacionales.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 rounded-2xl border bg-white/[0.02]" style={{ borderColor: 'var(--border-glass)' }}>
-                <span className="text-[10px] font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">En Empaque</span>
-                <h4 className="text-sm font-bold text-[color:var(--text-main)] mt-2">Guía #ENV-8921 - Celular Smartphone</h4>
-                <p className="text-xs text-slate-400 mt-1">Destino: Bogotá D.C. · Envía Colvanes</p>
-              </div>
-
-              <div className="p-4 rounded-2xl border bg-white/[0.02]" style={{ borderColor: 'var(--border-glass)' }}>
-                <span className="text-[10px] font-bold text-sky-400 px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">En Ruta</span>
-                <h4 className="text-sm font-bold text-[color:var(--text-main)] mt-2">Guía #ENV-8922 - Motocicleta Deportiva</h4>
-                <p className="text-xs text-slate-400 mt-1">Destino: Medellín · Despacho Directo</p>
-              </div>
-
-              <div className="p-4 rounded-2xl border bg-white/[0.02]" style={{ borderColor: 'var(--border-glass)' }}>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">Entregado</span>
-                <h4 className="text-sm font-bold text-[color:var(--text-main)] mt-2">Guía #ENV-8920 - Nevera Inverter</h4>
-                <p className="text-xs text-slate-400 mt-1">Destino: Cali · Recibido a conformidad</p>
-              </div>
+      {/* ── TAB 5: CLIENTES ── */}
+      {activeTab === 'clientes' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-[color:var(--text-main)]">Directorio de Clientes</h3>
+              <p className="text-xs text-slate-400">Consulta datos de contacto y entrega de los clientes registrados</p>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: CATÁLOGO Y EDICIÓN DE PRODUCTOS */}
-      {activeTab === 'productos' && (
-        <div className="space-y-6 animate-fadeInUp">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl border shadow-sm" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <div className="flex items-center gap-2 w-full md:w-auto flex-1 max-w-md">
-              <div className="relative w-full">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar producto por título o descripción..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchProducts()}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl outline-none"
-                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-main)' }}
-                />
-              </div>
-              <button
-                onClick={fetchProducts}
-                className="px-4 py-2.5 text-xs font-bold rounded-xl bg-orange-600 text-white cursor-pointer hover:bg-orange-700 shadow"
-              >
-                Buscar
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <select
-                value={productCategoryFilter}
-                onChange={(e) => setProductCategoryFilter(e.target.value)}
-                className="p-2.5 text-xs font-semibold rounded-xl outline-none cursor-pointer"
-                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', color: 'var(--text-main)' }}
-              >
-                <option value="Todos" style={{ background: '#0f0a28', color: '#fff' }}>Todas las Categorías</option>
-                <option value="Celulares" style={{ background: '#0f0a28', color: '#fff' }}>Celulares</option>
-                <option value="Motos" style={{ background: '#0f0a28', color: '#fff' }}>Motos</option>
-                <option value="Electrodomésticos" style={{ background: '#0f0a28', color: '#fff' }}>Electrodomésticos</option>
-                <option value="Tecnología" style={{ background: '#0f0a28', color: '#fff' }}>Tecnología</option>
-                <option value="Moda & Ropa" style={{ background: '#0f0a28', color: '#fff' }}>Moda & Ropa</option>
-                <option value="Calzado" style={{ background: '#0f0a28', color: '#fff' }}>Calzado</option>
-              </select>
-
-              <Button
-                variant="orange"
-                size="sm"
-                icon={Plus}
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsProductModalOpen(true);
-                }}
-              >
-                Nuevo Producto
-              </Button>
+            <div className="w-full sm:w-72">
+              <Input
+                placeholder="Buscar cliente..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                icon={Search}
+              />
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
             <table className="w-full text-left text-xs">
-              <thead className="border-b text-[11px]" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
-                <tr>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Producto</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Categoría</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Precio</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider">Stock</th>
-                  <th className="px-3 py-2.5 font-bold text-slate-400 uppercase tracking-wider text-right">Acción</th>
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--border-glass)', background: 'var(--bg-glass)' }}>
+                  <th className="p-3.5 font-bold text-slate-400">Cliente</th>
+                  <th className="p-3.5 font-bold text-slate-400">Documento</th>
+                  <th className="p-3.5 font-bold text-slate-400">Teléfono</th>
+                  <th className="p-3.5 font-bold text-slate-400">Dirección</th>
+                  <th className="p-3.5 font-bold text-slate-400">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{ borderColor: 'var(--border-glass)' }}>
-                {loadingProducts ? (
-                  <tr>
-                    <td colSpan="5" className="p-8 text-center text-slate-400">
-                      Cargando catálogo desde MongoDB...
+              <tbody className="divide-y" style={{ divideColor: 'var(--border-glass)' }}>
+                {clients.map((c) => (
+                  <tr key={c._id || c.id} className="hover:bg-white/[0.02]">
+                    <td className="p-3.5">
+                      <span className="font-bold text-[color:var(--text-main)] block">{c.nombre} {c.apellido}</span>
+                      <span className="text-[10px] text-slate-500">{c.email}</span>
                     </td>
+                    <td className="p-3.5 text-slate-300">{c.tipoDocumento || 'CC'}: {c.numeroDocumento}</td>
+                    <td className="p-3.5 text-slate-300">{c.telefono || 'N/A'}</td>
+                    <td className="p-3.5 text-slate-300">{c.direccion || 'Medellín, Colombia'}</td>
+                    <td className="p-3.5"><Badge color="emerald">{c.estado || 'Activo'}</Badge></td>
                   </tr>
-                ) : products.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="p-8 text-center text-slate-400">
-                      No hay productos registrados en esta categoría.
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((p) => (
-                    <tr key={p._id || p.id} className="hover:bg-white/[0.04] transition-colors">
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={p.image}
-                            alt={p.title}
-                            className="w-10 h-10 rounded-xl object-cover border border-white/10 shrink-0 shadow"
-                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=150&q=80'; }}
-                          />
-                          <div className="max-w-xs">
-                            <span className="font-bold text-[color:var(--text-main)] block truncate text-sm">{p.title}</span>
-                            <span className="text-[11px] text-slate-400 line-clamp-1">{p.description}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-3 py-2.5">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                          {p.category}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-2.5 font-black text-orange-400 text-sm">
-                        {p.priceFormatted || `$${p.price?.toLocaleString()} COP`}
-                      </td>
-
-                      <td className="px-3 py-2.5 text-slate-300 font-bold">
-                        <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs">
-                          {p.stock || 10} unid.
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          onClick={() => {
-                            setEditingProduct(p);
-                            setIsProductModalOpen(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 font-bold text-xs transition-colors cursor-pointer"
-                          title="Editar información de este producto"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          <span>Editar Producto</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Customer Detail Drawer Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" style={{ background: 'rgba(4,2,16,0.85)', backdropFilter: 'blur(16px)' }}>
-          <div className="relative w-full max-w-md rounded-3xl p-6 sm:p-8 border shadow-2xl animate-fadeInScale" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
-            <div className="flex items-center justify-between border-b pb-4 mb-4" style={{ borderColor: 'var(--border-glass)' }}>
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-sky-400">Ficha de Cliente</span>
-                <h3 className="text-xl font-black text-[color:var(--text-main)]">{selectedUser.nombre} {selectedUser.apellido}</h3>
-              </div>
-              <button onClick={() => setSelectedUser(null)} className="p-1 rounded-full text-slate-400 hover:text-white">✕</button>
-            </div>
+      {/* ── TAB 6: MENSAJES DE CONTACTO ── */}
+      {activeTab === 'mensajes' && (
+        <div className="space-y-4 animate-fadeIn">
+          <div>
+            <h3 className="text-base font-black text-[color:var(--text-main)]">Mensajes Recibidos desde la Web</h3>
+            <p className="text-xs text-slate-400">Consultas generales enviadas a través del formulario de contacto</p>
+          </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Documento</span>
-                <span className="font-bold text-white">{selectedUser.tipoDocumento || 'CC'}: {selectedUser.numeroDocumento}</span>
+          <div className="space-y-3">
+            {messages.map((m) => (
+              <div key={m._id || m.id} className="p-4 rounded-2xl border space-y-2"
+                   style={{ background: 'var(--bg-card)', borderColor: 'var(--border-card)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-[color:var(--text-main)]">{m.nombre}</span>
+                    <span className="text-slate-400 text-xs">({m.email})</span>
+                  </div>
+                  <Badge color={m.estado === 'Respondido' ? 'emerald' : 'orange'}>{m.estado || 'Pendiente'}</Badge>
+                </div>
+                <p className="text-xs text-slate-300">{m.mensaje}</p>
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => handleUpdateMessageStatus(m._id || m.id, 'Respondido')}
+                  >
+                    Marcar como Atendido
+                  </Button>
+                </div>
               </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Correo</span>
-                <span className="font-bold text-white">{selectedUser.email}</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Teléfono</span>
-                <span className="font-bold text-white">{selectedUser.telefono}</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase">Dirección de Entrega</span>
-                <span className="font-bold text-white">{selectedUser.direccion}</span>
-              </div>
-            </div>
-
-            <div className="mt-5 pt-3 border-t flex justify-end" style={{ borderColor: 'var(--border-glass)' }}>
-              <Button variant="ghost" onClick={() => setSelectedUser(null)}>Cerrar</Button>
-            </div>
+            ))}
           </div>
         </div>
       )}
-
-      {/* Modal: Create or Edit Product */}
-      <ModalCrearProducto
-        isOpen={isProductModalOpen}
-        onClose={() => {
-          setIsProductModalOpen(false);
-          setEditingProduct(null);
-        }}
-        productToEdit={editingProduct}
-        onProductSaved={() => {
-          fetchProducts();
-          showToast(
-            editingProduct
-              ? '¡Producto actualizado exitosamente en el catálogo!'
-              : '¡Producto publicado con éxito en la tienda y guardado en MongoDB!'
-          );
-        }}
-      />
-    </div>
+    </DashboardLayout>
   );
 }

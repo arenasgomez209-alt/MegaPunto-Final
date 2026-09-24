@@ -21,6 +21,8 @@ import {
   Lock
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { salesAPI } from '../services/api.js';
 
 // Step indicator component
 function StepIndicator({ step }) {
@@ -89,8 +91,11 @@ export default function CartModal() {
     numero: '', nombre: '', expiry: '', cvv: ''
   });
 
+  const { currentUser } = useAuth();
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [errors, setErrors] = useState({});
+  const [confirmedSale, setConfirmedSale] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isCartOpen) return null;
 
@@ -129,11 +134,44 @@ export default function CartModal() {
     return true;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!validatePayment()) return;
-    setOrderPlaced(true);
-    clearCart();
-    setStep(4);
+    setIsSubmitting(true);
+    try {
+      const salePayload = {
+        cliente_id: currentUser?._id || currentUser?.id || null,
+        cliente_nombre: `${shipping.nombre} ${shipping.apellido}`.trim(),
+        cliente_email: shipping.email || currentUser?.email || 'cliente@megapunto.com',
+        cliente_telefono: shipping.telefono,
+        cliente_documento: currentUser?.numeroDocumento || 'CC-100000',
+        direccion_envio: `${shipping.direccion}, ${shipping.barrio ? shipping.barrio + ', ' : ''}${shipping.ciudad} (${shipping.departamento})`,
+        metodo_pago: paymentMethod,
+        items: items.map(item => ({
+          item_id: item._id || item.id || 'item-demo',
+          nombre: item.nombre || item.title,
+          tipo: 'Producto',
+          cantidad: item.qty || 1,
+          precio_unitario: Number(item.precio || item.price || 0),
+          descuento: 0,
+          subtotal: Number(item.precio || item.price || 0) * (item.qty || 1),
+          total: Number(item.precio || item.price || 0) * (item.qty || 1)
+        })),
+        descuento_global: 0,
+        notas: shipping.referencias || ''
+      };
+
+      const res = await salesAPI.create(salePayload);
+      if (res.ok && res.data?.sale) {
+        setConfirmedSale(res.data.sale);
+      }
+    } catch (err) {
+      console.error('Error al registrar venta:', err);
+    } finally {
+      setIsSubmitting(false);
+      setOrderPlaced(true);
+      clearCart();
+      setStep(4);
+    }
   };
 
   const handleClose = () => {
@@ -514,10 +552,22 @@ export default function CartModal() {
               <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
                 Hemos registrado tu pedido con éxito. Recibirás una confirmación en tu correo y el seguimiento del envío dentro de las próximas 24 horas hábiles.
               </p>
-              <div className="p-4 rounded-2xl border text-left space-y-1" style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
-                <p className="text-[10px] text-slate-400 font-bold">ENTREGA A:</p>
-                <p className="text-sm font-bold text-[color:var(--text-main)]">{shipping.nombre} {shipping.apellido}</p>
-                <p className="text-xs text-slate-400">{shipping.direccion}, {shipping.ciudad}</p>
+              <div className="p-4 rounded-2xl border text-left space-y-2" style={{ background: 'var(--bg-glass)', borderColor: 'var(--border-glass)' }}>
+                {confirmedSale && (
+                  <div className="flex flex-wrap gap-2 pb-2 border-b border-white/10">
+                    <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                      Venta: {confirmedSale.numero_venta}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      Factura: {confirmedSale.numero_factura}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold">ENTREGA A:</p>
+                  <p className="text-sm font-bold text-[color:var(--text-main)]">{shipping.nombre} {shipping.apellido}</p>
+                  <p className="text-xs text-slate-400">{shipping.direccion}, {shipping.ciudad}</p>
+                </div>
                 <p className="text-xs text-emerald-400 font-bold mt-1">
                   Método: {PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label || 'Confirmado'}
                 </p>

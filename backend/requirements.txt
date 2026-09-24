@@ -10,4 +10,9 @@ pyjwt>=2.9.0
 bcrypt>=4.2.0
 python-multipart>=0.0.12
 email-validator>=2.2.0
+reportlab>=5.0.0
+openpyxl>=3.1.5
+httpx>=0.28.0
+pillow>=10.0.0
+
 

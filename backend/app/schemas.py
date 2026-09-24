@@ -126,3 +126,127 @@ class ContactCreate(BaseModel):
 
 class ContactStatusUpdate(BaseModel):
     estado: str
+
+# --- VENTAS Y DETALLE VENTAS SCHEMAS ---
+
+class SaleItemCreate(BaseModel):
+    item_id: str
+    nombre: str
+    tipo: str = "Producto"  # "Producto" o "Servicio"
+    cantidad: int = Field(..., gt=0)
+    precio_unitario: float = Field(..., ge=0)
+    descuento: float = 0.0
+    subtotal: Optional[float] = None
+    total: Optional[float] = None
+
+class SaleCreate(BaseModel):
+    cliente_id: Optional[str] = None
+    cliente_nombre: str
+    cliente_email: EmailStr
+    cliente_telefono: Optional[str] = ""
+    cliente_documento: Optional[str] = ""
+    direccion_envio: Optional[str] = ""
+    metodo_pago: str = "pse"  # pse, card, nequi, contra, efectivo
+    items: List[SaleItemCreate]
+    descuento_global: float = 0.0
+    notas: Optional[str] = ""
+
+class SaleResponse(BaseModel):
+    id: str
+    _id: Optional[str] = None
+    numero_venta: str
+    cliente_id: Optional[str] = None
+    cliente_nombre: str
+    cliente_email: str
+    cliente_telefono: Optional[str] = None
+    cliente_documento: Optional[str] = None
+    usuario_id: Optional[str] = None
+    items: List[dict] = []
+    subtotal: float
+    descuento: float = 0.0
+    impuestos: float
+    total: float
+    fecha: str
+    estado: str = "Completada"
+    metodo_pago: str = "pse"
+    direccion_envio: Optional[str] = None
+
+# --- FACTURAS SCHEMAS ---
+
+class InvoiceResponse(BaseModel):
+    id: str
+    _id: Optional[str] = None
+    numero_factura: str
+    venta_id: str
+    fecha_emision: str
+    cliente: dict
+    items: List[dict]
+    subtotal: float
+    impuestos: float
+    descuento: float = 0.0
+    total: float
+    estado: str = "Pagada"
+    metodo_pago: str
+
+# --- PQR SCHEMAS ---
+
+class PQRCreate(BaseModel):
+    tipo: str = Field(..., description="Petición, Queja, Reclamo, Sugerencia")
+    asunto: str = Field(..., min_length=3, max_length=150)
+    descripcion: str = Field(..., min_length=10)
+
+class PQRUpdateStatus(BaseModel):
+    estado: str = Field(..., description="Pendiente, En Proceso, Respondida, Cerrada")
+    respuesta: Optional[str] = None
+
+class PQRResponse(BaseModel):
+    id: str
+    _id: Optional[str] = None
+    radicado: str
+    cliente_id: str
+    cliente_nombre: str
+    cliente_email: str
+    tipo: str
+    asunto: str
+    descripcion: str
+    estado: str = "Pendiente"
+    respuesta: Optional[str] = None
+    atendido_por: Optional[str] = None
+    fecha_creacion: str
+    fecha_respuesta: Optional[str] = None
+
+# --- CHATBOT SCHEMAS ---
+
+class ChatbotMessage(BaseModel):
+    remitente: str  # "user" o "bot"
+    texto: str
+    timestamp: Optional[str] = None
+
+class ChatbotRequest(BaseModel):
+    mensaje: str = Field(..., min_length=1)
+    session_id: Optional[str] = None
+    historial: Optional[List[ChatbotMessage]] = []
+
+class ChatbotResponse(BaseModel):
+    respuesta: str
+    session_id: str
+    sugerencias: Optional[List[str]] = []
+
+# --- DASHBOARD STATS SCHEMAS ---
+
+class DashboardStatsResponse(BaseModel):
+    total_usuarios: int
+    total_productos: int
+    total_servicios: int
+    total_ventas: int
+    total_facturacion: float
+    pqr_recibidas: int
+    pqr_pendientes: int
+    ventas_hoy: int
+    facturacion_hoy: float
+    ventas_por_dia: List[dict]
+    ventas_por_semana: List[dict]
+    ventas_por_mes: List[dict]
+    top_productos: List[dict]
+    ventas_por_categoria: List[dict]
+
