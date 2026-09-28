@@ -14,7 +14,7 @@ from app.database import (
 from app.security import hash_password
 
 INITIAL_USERS = [
-    {
+
     {
     "nombre": "Matias",
     "apellido": "Arenas",
@@ -28,7 +28,7 @@ INITIAL_USERS = [
     "estado": "Activo",
     "fechaCreacion": datetime.now(timezone.utc).isoformat()
 },
-    },
+    
     {
         "nombre": "Carlos Empleado",
         "apellido": "Gómez",
