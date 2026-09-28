@@ -15,17 +15,19 @@ from app.security import hash_password
 
 INITIAL_USERS = [
     {
-        "nombre": "Juan Administrador",
-        "apellido": "SENA",
-        "tipoDocumento": "CC",
-        "numeroDocumento": "1000000001",
-        "direccion": "Calle 50 # 45-20, Medellín",
-        "telefono": "3046408290",
-        "email": "admin@megapunto.com",
-        "password": hash_password("Admin123*"),
-        "rol": "Administrador",
-        "estado": "Activo",
-        "fechaCreacion": datetime.now(timezone.utc).isoformat()
+    {
+    "nombre": "Matias",
+    "apellido": "Arenas",
+    "tipoDocumento": "CC",
+    "numeroDocumento": "1023527927",
+    "direccion": "Calle Principal # 12-34",
+    "telefono": "3046408290",
+    "email": "arenasgomez209@gmail.com",
+    "password": hash_password("1023"),
+    "rol": "Administrador",
+    "estado": "Activo",
+    "fechaCreacion": datetime.now(timezone.utc).isoformat()
+},
     },
     {
         "nombre": "Carlos Empleado",
