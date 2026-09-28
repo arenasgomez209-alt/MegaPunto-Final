@@ -16,17 +16,9 @@ def serialize_service(srv: dict) -> dict:
     return s
 
 @router.get("", response_model=None)
-async def listar_servicios(
-    search: Optional[str] = None
-):
-    """Consulta la lista completa de servicios ofrecidos con opción de búsqueda."""
-    query = {}
-    if search:
-        query["$or"] = [
-            {"title": {"$regex": search, "$options": "i"}},
-            {"description": {"$regex": search, "$options": "i"}}
-        ]
-    cursor = services_collection.find(query)
+async def listar_servicios():
+    """Consulta la lista completa de servicios ofrecidos."""
+    cursor = services_collection.find()
     services = []
     async for doc in cursor:
         services.append(serialize_service(doc))

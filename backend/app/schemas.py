@@ -102,17 +102,11 @@ class ServiceCreate(BaseModel):
     title: str = Field(..., min_length=3, description="Título del servicio")
     description: str = Field(..., min_length=5, description="Descripción del servicio")
     icon: Optional[str] = "Sparkles"
-    precio: Optional[float] = 0.0
-    tiempoEstimado: Optional[str] = "24-48 horas"
-    estado: Optional[str] = "Activo"
 
 class ServiceUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
-    precio: Optional[float] = None
-    tiempoEstimado: Optional[str] = None
-    estado: Optional[str] = None
 
 class ServiceResponse(BaseModel):
     id: str
@@ -120,9 +114,6 @@ class ServiceResponse(BaseModel):
     title: str
     description: str
     icon: Optional[str] = "Sparkles"
-    precio: Optional[float] = 0.0
-    tiempoEstimado: Optional[str] = "24-48 horas"
-    estado: Optional[str] = "Activo"
 
 # --- CONTACTO SCHEMAS ---
 

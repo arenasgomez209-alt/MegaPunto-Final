@@ -89,10 +89,8 @@ export const productsAPI = {
 };
 
 export const servicesAPI = {
-  getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    return apiFetch(`/servicios${query ? `?${query}` : ''}`, { method: 'GET' });
-  },
+  getAll: () =>
+    apiFetch('/servicios', { method: 'GET' }),
   getById: (id) =>
     apiFetch(`/servicios/${id}`, { method: 'GET' }),
   create: (serviceData) =>
