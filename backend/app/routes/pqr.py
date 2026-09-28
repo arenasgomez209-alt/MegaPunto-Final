@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from bson import ObjectId
 from app.database import pqr_collection
-from app.schemas import PQRCreate, PQRUpdateStatus
+from app.schemas import PQRCreate, PQRUpdateStatus, PQRUpdate
 
 router = APIRouter(prefix="/api/pqr", tags=["PQR - Peticiones, Quejas y Reclamos"])
 
@@ -110,6 +110,28 @@ async def get_pqr(pqr_id: str):
         raise HTTPException(status_code=404, detail="PQR no encontrada")
     return {"success": True, "pqr": clean_doc(p)}
 
+@router.put("/{pqr_id}")
+async def update_pqr(pqr_id: str, pqr_in: PQRUpdate):
+    """Actualiza los campos de una PQR de forma integral."""
+    query = {"_id": ObjectId(pqr_id)} if ObjectId.is_valid(pqr_id) else {"radicado": pqr_id}
+    pqr = await pqr_collection.find_one(query)
+    if not pqr:
+        raise HTTPException(status_code=404, detail="PQR no encontrada")
+
+    update_fields = {k: v for k, v in pqr_in.model_dump().items() if v is not None}
+    if pqr_in.respuesta and not pqr.get("fecha_respuesta"):
+        update_fields["fecha_respuesta"] = datetime.now(timezone.utc).isoformat()
+
+    if update_fields:
+        await pqr_collection.update_one(query, {"$set": update_fields})
+
+    updated_pqr = await pqr_collection.find_one(query)
+    return {
+        "success": True,
+        "message": f"PQR {updated_pqr.get('radicado')} actualizada correctamente",
+        "pqr": clean_doc(updated_pqr)
+    }
+
 @router.patch("/{pqr_id}/estado")
 async def update_pqr_status(
     pqr_id: str,
@@ -147,3 +169,13 @@ async def update_pqr_status(
         "message": f"PQR {updated_pqr.get('radicado')} actualizada a '{update_data.estado}' exitosamente.",
         "pqr": clean_doc(updated_pqr)
     }
+
+@router.delete("/{pqr_id}", status_code=status.HTTP_200_OK)
+async def delete_pqr(pqr_id: str):
+    """Elimina una solicitud de PQR."""
+    query = {"_id": ObjectId(pqr_id)} if ObjectId.is_valid(pqr_id) else {"radicado": pqr_id}
+    pqr = await pqr_collection.find_one(query)
+    if not pqr:
+        raise HTTPException(status_code=404, detail="PQR no encontrada")
+    await pqr_collection.delete_one(query)
+    return {"success": True, "message": f"PQR {pqr.get('radicado')} eliminada exitosamente"}

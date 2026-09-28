@@ -150,6 +150,10 @@ class SaleCreate(BaseModel):
     items: List[SaleItemCreate]
     descuento_global: float = 0.0
     notas: Optional[str] = ""
+    usuario_operador: Optional[str] = "Sitio Web (Online)"
+
+class SaleStatusUpdate(BaseModel):
+    estado: str = Field(..., description="Completada, En Proceso, Enviada, Cancelada")
 
 class SaleResponse(BaseModel):
     id: str
@@ -161,6 +165,7 @@ class SaleResponse(BaseModel):
     cliente_telefono: Optional[str] = None
     cliente_documento: Optional[str] = None
     usuario_id: Optional[str] = None
+    usuario_operador: Optional[str] = "Sitio Web (Online)"
     items: List[dict] = []
     subtotal: float
     descuento: float = 0.0
@@ -188,6 +193,9 @@ class InvoiceResponse(BaseModel):
     estado: str = "Pagada"
     metodo_pago: str
 
+class InvoiceStatusUpdate(BaseModel):
+    estado: str = Field(..., description="Pagada, Anulada, Pendiente")
+
 # --- PQR SCHEMAS ---
 
 class PQRCreate(BaseModel):
@@ -198,6 +206,14 @@ class PQRCreate(BaseModel):
 class PQRUpdateStatus(BaseModel):
     estado: str = Field(..., description="Pendiente, En Proceso, Respondida, Cerrada")
     respuesta: Optional[str] = None
+
+class PQRUpdate(BaseModel):
+    tipo: Optional[str] = None
+    asunto: Optional[str] = None
+    descripcion: Optional[str] = None
+    estado: Optional[str] = None
+    respuesta: Optional[str] = None
+    atendido_por: Optional[str] = None
 
 class PQRResponse(BaseModel):
     id: str

@@ -10,6 +10,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from app.database import invoices_collection, invoices_details_collection
+from app.schemas import InvoiceStatusUpdate
 
 router = APIRouter(prefix="/api/facturas", tags=["Facturación"])
 
@@ -27,17 +28,29 @@ def format_cop(val: float) -> str:
 async def get_invoices(
     numero_factura: Optional[str] = Query(None),
     cliente_id: Optional[str] = Query(None),
+    cliente: Optional[str] = Query(None, description="Filtrar por nombre o email del cliente"),
+    estado: Optional[str] = Query(None),
     fecha_inicio: Optional[str] = Query(None),
     fecha_fin: Optional[str] = Query(None),
+    valor_min: Optional[float] = Query(None),
+    valor_max: Optional[float] = Query(None),
     search: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500)
 ):
-    """Consulta facturas con opciones de búsqueda y filtrado."""
+    """Consulta facturas generadas mediante criterios de búsqueda como número de factura, cliente, estado, valor o fecha."""
     query = {}
     if numero_factura:
         query["numero_factura"] = {"$regex": numero_factura, "$options": "i"}
     if cliente_id:
         query["cliente.id"] = cliente_id
+    if cliente:
+        query["$or"] = [
+            {"cliente.nombre": {"$regex": cliente, "$options": "i"}},
+            {"cliente.email": {"$regex": cliente, "$options": "i"}}
+        ]
+    if estado and estado != "Todos":
+        query["estado"] = estado
+
     if fecha_inicio and fecha_fin:
         query["fecha_emision"] = {"$gte": f"{fecha_inicio}T00:00:00", "$lte": f"{fecha_fin}T23:59:59"}
     elif fecha_inicio:
@@ -45,13 +58,24 @@ async def get_invoices(
     elif fecha_fin:
         query["fecha_emision"] = {"$lte": f"{fecha_fin}T23:59:59"}
 
+    if valor_min is not None and valor_max is not None:
+        query["total"] = {"$gte": valor_min, "$lte": valor_max}
+    elif valor_min is not None:
+        query["total"] = {"$gte": valor_min}
+    elif valor_max is not None:
+        query["total"] = {"$lte": valor_max}
+
     if search:
-        query["$or"] = [
+        search_condition = [
             {"numero_factura": {"$regex": search, "$options": "i"}},
             {"cliente.nombre": {"$regex": search, "$options": "i"}},
             {"cliente.email": {"$regex": search, "$options": "i"}},
             {"cliente.documento": {"$regex": search, "$options": "i"}}
         ]
+        if "$or" in query:
+            query["$and"] = [{"$or": query.pop("$or")}, {"$or": search_condition}]
+        else:
+            query["$or"] = search_condition
 
     cursor = invoices_collection.find(query).sort("fecha_emision", -1).limit(limit)
     invoices = []
@@ -273,3 +297,26 @@ async def download_invoice_pdf(invoice_id: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+@router.patch("/{invoice_id}/estado")
+async def update_invoice_status(invoice_id: str, status_data: InvoiceStatusUpdate):
+    """Actualiza el estado de una factura (Pagada, Anulada, Pendiente)."""
+    query = {"_id": ObjectId(invoice_id)} if ObjectId.is_valid(invoice_id) else {"numero_factura": invoice_id}
+    inv = await invoices_collection.find_one(query)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    await invoices_collection.update_one(query, {"$set": {"estado": status_data.estado}})
+    updated = await invoices_collection.find_one(query)
+    return {"success": True, "message": f"Estado de la factura actualizado a {status_data.estado}", "invoice": clean_doc(updated)}
+
+@router.delete("/{invoice_id}", status_code=status.HTTP_200_OK)
+async def delete_invoice(invoice_id: str):
+    """Anula o elimina una factura del sistema."""
+    query = {"_id": ObjectId(invoice_id)} if ObjectId.is_valid(invoice_id) else {"numero_factura": invoice_id}
+    inv = await invoices_collection.find_one(query)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    inv_id_str = str(inv["_id"])
+    await invoices_details_collection.delete_many({"factura_id": inv_id_str})
+    await invoices_collection.delete_one(query)
+    return {"success": True, "message": f"Factura {inv.get('numero_factura')} eliminada correctamente"}

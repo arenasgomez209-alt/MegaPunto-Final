@@ -11,7 +11,7 @@ from app.database import (
     products_collection,
     users_collection
 )
-from app.schemas import SaleCreate, SaleResponse
+from app.schemas import SaleCreate, SaleResponse, SaleStatusUpdate
 from app.security import get_current_user, require_staff
 
 router = APIRouter(prefix="/api/ventas", tags=["Ventas y Detalle de Ventas"])
@@ -92,6 +92,7 @@ async def create_sale(sale_in: SaleCreate):
         "cliente_email": sale_in.cliente_email,
         "cliente_telefono": sale_in.cliente_telefono,
         "cliente_documento": sale_in.cliente_documento,
+        "usuario_operador": sale_in.usuario_operador or "Sitio Web (Online)",
         "direccion_envio": sale_in.direccion_envio,
         "metodo_pago": sale_in.metodo_pago,
         "subtotal": round(subtotal, 2),
@@ -180,15 +181,26 @@ async def get_sales(
     fecha_inicio: Optional[str] = Query(None, description="Fecha inicial YYYY-MM-DD"),
     fecha_fin: Optional[str] = Query(None, description="Fecha final YYYY-MM-DD"),
     cliente_id: Optional[str] = Query(None),
+    cliente: Optional[str] = Query(None, description="Nombre o correo del cliente"),
+    producto: Optional[str] = Query(None, description="Filtrar por nombre de producto"),
+    servicio: Optional[str] = Query(None, description="Filtrar por nombre de servicio"),
     estado: Optional[str] = Query(None),
+    valor_min: Optional[float] = Query(None, description="Valor mínimo de venta"),
+    valor_max: Optional[float] = Query(None, description="Valor máximo de venta"),
     search: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500)
 ):
-    """Consulta el historial de ventas con filtros avanzados."""
+    """Consulta el historial de ventas con criterios de búsqueda por fecha, cliente, producto, servicio, estado y valor."""
     query = {}
 
     if cliente_id:
         query["cliente_id"] = cliente_id
+
+    if cliente:
+        query["$or"] = [
+            {"cliente_nombre": {"$regex": cliente, "$options": "i"}},
+            {"cliente_email": {"$regex": cliente, "$options": "i"}}
+        ]
 
     if estado and estado != "Todos":
         query["estado"] = estado
@@ -200,13 +212,30 @@ async def get_sales(
     elif fecha_fin:
         query["fecha"] = {"$lte": f"{fecha_fin}T23:59:59"}
 
+    if producto:
+        query["items"] = {"$elemMatch": {"nombre": {"$regex": producto, "$options": "i"}, "tipo": "Producto"}}
+
+    if servicio:
+        query["items"] = {"$elemMatch": {"nombre": {"$regex": servicio, "$options": "i"}, "tipo": "Servicio"}}
+
+    if valor_min is not None and valor_max is not None:
+        query["total"] = {"$gte": valor_min, "$lte": valor_max}
+    elif valor_min is not None:
+        query["total"] = {"$gte": valor_min}
+    elif valor_max is not None:
+        query["total"] = {"$lte": valor_max}
+
     if search:
-        query["$or"] = [
+        search_condition = [
             {"numero_venta": {"$regex": search, "$options": "i"}},
             {"cliente_nombre": {"$regex": search, "$options": "i"}},
             {"cliente_email": {"$regex": search, "$options": "i"}},
             {"items.nombre": {"$regex": search, "$options": "i"}}
         ]
+        if "$or" in query:
+            query["$and"] = [{"$or": query.pop("$or")}, {"$or": search_condition}]
+        else:
+            query["$or"] = search_condition
 
     cursor = sales_collection.find(query).sort("fecha", -1).limit(limit)
     sales = []
@@ -245,3 +274,26 @@ async def get_sale_detail(sale_id: str):
     clean_s = clean_doc(sale)
     clean_s["detalle_items"] = details
     return {"success": True, "sale": clean_s}
+
+@router.patch("/{sale_id}/estado")
+async def update_sale_status(sale_id: str, status_data: SaleStatusUpdate):
+    """Actualiza el estado de una venta (Completada, En Proceso, Cancelada)."""
+    query = {"_id": ObjectId(sale_id)} if ObjectId.is_valid(sale_id) else {"numero_venta": sale_id}
+    sale = await sales_collection.find_one(query)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    await sales_collection.update_one(query, {"$set": {"estado": status_data.estado}})
+    updated = await sales_collection.find_one(query)
+    return {"success": True, "message": f"Estado de la venta actualizado a {status_data.estado}", "sale": clean_doc(updated)}
+
+@router.delete("/{sale_id}", status_code=status.HTTP_200_OK)
+async def delete_sale(sale_id: str):
+    """Elimina una venta del sistema."""
+    query = {"_id": ObjectId(sale_id)} if ObjectId.is_valid(sale_id) else {"numero_venta": sale_id}
+    sale = await sales_collection.find_one(query)
+    if not sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    sale_id_str = str(sale["_id"])
+    await sales_details_collection.delete_many({"venta_id": sale_id_str})
+    await sales_collection.delete_one(query)
+    return {"success": True, "message": f"Venta {sale.get('numero_venta')} eliminada correctamente"}

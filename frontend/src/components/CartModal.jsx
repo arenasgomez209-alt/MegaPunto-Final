@@ -18,11 +18,13 @@ import {
   Phone,
   Mail,
   Truck,
-  Lock
+  Lock,
+  Download,
+  FileText
 } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { salesAPI } from '../services/api.js';
+import { salesAPI, invoicesAPI } from '../services/api.js';
 
 // Step indicator component
 function StepIndicator({ step }) {
@@ -572,12 +574,23 @@ export default function CartModal() {
                   Método: {PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label || 'Confirmado'}
                 </p>
               </div>
-              <button
-                onClick={handleClose}
-                className="w-full py-3 rounded-2xl text-sm font-black text-white bg-orange-600 hover:bg-orange-700 transition-colors cursor-pointer"
-              >
-                Seguir Comprando
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+                {confirmedSale && (
+                  <button
+                    onClick={() => invoicesAPI.downloadPdf(confirmedSale.factura_id || confirmedSale.id, confirmedSale.numero_factura)}
+                    className="flex-1 py-3 px-4 rounded-2xl text-xs font-black text-white bg-purple-600 hover:bg-purple-700 transition-colors cursor-pointer flex items-center justify-center gap-2 border border-purple-400/30"
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar Factura PDF
+                  </button>
+                )}
+                <button
+                  onClick={handleClose}
+                  className="flex-1 py-3 px-4 rounded-2xl text-xs font-black text-white bg-orange-600 hover:bg-orange-700 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  Seguir Comprando
+                </button>
+              </div>
             </div>
           )}
         </div>

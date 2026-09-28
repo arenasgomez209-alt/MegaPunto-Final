@@ -127,8 +127,47 @@ async def run_async_tests():
         assert len(bot_res["sugerencias"]) > 0
         print(f"[PASS] 12. POST /api/chatbot/chat OK - Respuesta IA: \"{bot_res['respuesta'][:70]}...\"")
 
+        # 13. Sales filtering by product, service, and value range (REQ-03)
+        res = await client.get("/api/ventas?producto=Licuadora&valor_min=100000")
+        assert res.status_code == 200
+        filtered_sales = res.json()["sales"]
+        assert len(filtered_sales) > 0
+        print(f"[PASS] 13. GET /api/ventas (Filtro producto + valor_min) OK - {len(filtered_sales)} coincidencias")
+
+        # 14. Dashboard stats with product & client filters (REQ-13)
+        res = await client.get("/api/dashboard/stats?producto=Licuadora")
+        assert res.status_code == 200
+        dash_filtered = res.json()
+        assert "total_ventas" in dash_filtered
+        print(f"[PASS] 14. GET /api/dashboard/stats (Filtro producto) OK - Ventas: {dash_filtered['total_ventas']}")
+
+        # 15. Invoices filtering & PATCH status update (REQ-08, REQ-14)
+        res = await client.get("/api/facturas?estado=Pagada")
+        assert res.status_code == 200
+        assert len(res.json()["invoices"]) > 0
+        res = await client.patch(f"/api/facturas/{test_inv['id']}/estado", json={"estado": "Pagada"})
+        assert res.status_code == 200
+        print(f"[PASS] 15. PATCH /api/facturas/{{id}}/estado OK - Factura actualizada")
+
+        # 16. PQR PUT update (REQ-16, REQ-25)
+        put_payload = {
+            "asunto": "Consulta sobre garantía de lavadora LG actualizada",
+            "descripcion": "Descripción actualizada para prueba funcional PUT en PQR."
+        }
+        res = await client.put(f"/api/pqr/{pqr_id}", json=put_payload)
+        assert res.status_code == 200
+        assert "actualizada" in res.json()["pqr"]["asunto"]
+        print(f"[PASS] 16. PUT /api/pqr/{{id}} OK - PQR modificada con éxito")
+
+        # 17. Chatbot audit & conversations list (REQ-18, REQ-25)
+        res = await client.get("/api/chatbot/conversaciones")
+        assert res.status_code == 200
+        convs = res.json()["conversaciones"]
+        assert len(convs) > 0
+        print(f"[PASS] 17. GET /api/chatbot/conversaciones OK - {len(convs)} conversaciones activas")
+
         print("==================================================")
-        print("TODAS LAS 12 PRUEBAS AUTOMATIZADAS PASARON CON ÉXITO")
+        print("TODAS LAS 17 PRUEBAS AUTOMATIZADAS PASARON CON ÉXITO")
         print("==================================================")
 
 if __name__ == "__main__":

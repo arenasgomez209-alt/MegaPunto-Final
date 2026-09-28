@@ -76,6 +76,9 @@ export default function AdminPanel() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('Todos');
+  const [filterProducto, setFilterProducto] = useState('');
+  const [filterServicio, setFilterServicio] = useState('');
+  const [filterCliente, setFilterCliente] = useState('');
 
   const fetchDashboardStats = async () => {
     setLoadingStats(true);
@@ -83,6 +86,9 @@ export default function AdminPanel() {
     if (filterStartDate) params.fecha_inicio = filterStartDate;
     if (filterEndDate) params.fecha_fin = filterEndDate;
     if (filterStatus !== 'Todos') params.estado = filterStatus;
+    if (filterProducto) params.producto = filterProducto;
+    if (filterServicio) params.servicio = filterServicio;
+    if (filterCliente) params.cliente = filterCliente;
 
     const res = await dashboardAPI.getStats(params);
     setLoadingStats(false);
@@ -93,17 +99,31 @@ export default function AdminPanel() {
 
   useEffect(() => {
     fetchDashboardStats();
-  }, [filterStartDate, filterEndDate, filterStatus]);
+  }, [filterStartDate, filterEndDate, filterStatus, filterProducto, filterServicio, filterCliente]);
 
   // ────────────────── TAB 2: VENTAS ──────────────────
   const [sales, setSales] = useState([]);
   const [loadingSales, setLoadingSales] = useState(false);
   const [salesSearch, setSalesSearch] = useState('');
+  const [salesStartDate, setSalesStartDate] = useState('');
+  const [salesEndDate, setSalesEndDate] = useState('');
+  const [salesStatus, setSalesStatus] = useState('Todos');
+  const [salesProduct, setSalesProduct] = useState('');
+  const [salesMinVal, setSalesMinVal] = useState('');
+  const [salesMaxVal, setSalesMaxVal] = useState('');
   const [selectedSale, setSelectedSale] = useState(null);
 
   const fetchSales = async () => {
     setLoadingSales(true);
-    const res = await salesAPI.getAll({ search: salesSearch });
+    const params = { search: salesSearch };
+    if (salesStartDate) params.fecha_inicio = salesStartDate;
+    if (salesEndDate) params.fecha_fin = salesEndDate;
+    if (salesStatus !== 'Todos') params.estado = salesStatus;
+    if (salesProduct) params.producto = salesProduct;
+    if (salesMinVal) params.valor_min = salesMinVal;
+    if (salesMaxVal) params.valor_max = salesMaxVal;
+
+    const res = await salesAPI.getAll(params);
     setLoadingSales(false);
     if (res.ok && res.data?.sales) {
       setSales(res.data.sales);
@@ -112,7 +132,7 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (activeTab === 'ventas') fetchSales();
-  }, [activeTab, salesSearch]);
+  }, [activeTab, salesSearch, salesStartDate, salesEndDate, salesStatus, salesProduct, salesMinVal, salesMaxVal]);
 
   // ────────────────── TAB 3: FACTURAS ──────────────────
   const [invoices, setInvoices] = useState([]);
@@ -406,6 +426,33 @@ export default function AdminPanel() {
                 />
               </div>
 
+              <input
+                type="text"
+                placeholder="Producto..."
+                value={filterProducto}
+                onChange={(e) => setFilterProducto(e.target.value)}
+                className="w-28 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
+                title="Filtrar analítica por producto"
+              />
+
+              <input
+                type="text"
+                placeholder="Servicio..."
+                value={filterServicio}
+                onChange={(e) => setFilterServicio(e.target.value)}
+                className="w-28 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
+                title="Filtrar analítica por servicio"
+              />
+
+              <input
+                type="text"
+                placeholder="Cliente..."
+                value={filterCliente}
+                onChange={(e) => setFilterCliente(e.target.value)}
+                className="w-28 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 outline-none text-xs focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20"
+                title="Filtrar analítica por cliente"
+              />
+
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -417,9 +464,16 @@ export default function AdminPanel() {
                 <option value="Cancelada">Cancelada</option>
               </select>
 
-              {(filterStartDate || filterEndDate || filterStatus !== 'Todos') && (
+              {(filterStartDate || filterEndDate || filterStatus !== 'Todos' || filterProducto || filterServicio || filterCliente) && (
                 <button
-                  onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterStatus('Todos'); }}
+                  onClick={() => {
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                    setFilterStatus('Todos');
+                    setFilterProducto('');
+                    setFilterServicio('');
+                    setFilterCliente('');
+                  }}
                   className="text-xs text-orange-600 font-bold hover:underline cursor-pointer"
                 >
                   Restablecer
@@ -619,18 +673,87 @@ export default function AdminPanel() {
       {/* ════════════════════ TAB 2: HISTORIAL DE VENTAS ════════════════════ */}
       {activeTab === 'ventas' && (
         <div className="space-y-5 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-black text-[color:var(--text-main)]">Historial General de Ventas</h3>
-              <p className="text-xs text-slate-400">Consulta de operaciones registradas desde la tienda web y módulos POS</p>
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-black text-[color:var(--text-main)]">Historial General de Ventas</h3>
+                <p className="text-xs text-slate-400">Consulta de operaciones registradas desde la tienda web y módulos POS</p>
+              </div>
+              <div className="w-full sm:w-72">
+                <Input
+                  placeholder="Buscar por venta, cliente, producto..."
+                  value={salesSearch}
+                  onChange={(e) => setSalesSearch(e.target.value)}
+                  icon={Search}
+                />
+              </div>
             </div>
-            <div className="w-full sm:w-72">
-              <Input
-                placeholder="Buscar por venta, cliente, producto..."
-                value={salesSearch}
-                onChange={(e) => setSalesSearch(e.target.value)}
-                icon={Search}
+
+            {/* Sales Advanced Filter Bar (Requerimiento 03) */}
+            <div className="p-3.5 rounded-xl border bg-white border-slate-200 shadow-2xs flex flex-wrap items-center gap-2.5 text-xs">
+              <span className="text-slate-500 font-bold text-[11px] flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5 text-orange-500" /> Filtros:
+              </span>
+              <input
+                type="date"
+                value={salesStartDate}
+                onChange={(e) => setSalesStartDate(e.target.value)}
+                className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+                title="Fecha inicio"
               />
+              <input
+                type="date"
+                value={salesEndDate}
+                onChange={(e) => setSalesEndDate(e.target.value)}
+                className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+                title="Fecha fin"
+              />
+              <input
+                type="text"
+                placeholder="Producto / Servicio..."
+                value={salesProduct}
+                onChange={(e) => setSalesProduct(e.target.value)}
+                className="w-36 px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+              />
+              <select
+                value={salesStatus}
+                onChange={(e) => setSalesStatus(e.target.value)}
+                className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+              >
+                <option value="Todos">Todos los Estados</option>
+                <option value="Completada">Completada</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Cancelada">Cancelada</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Mín $"
+                value={salesMinVal}
+                onChange={(e) => setSalesMinVal(e.target.value)}
+                className="w-20 px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+              />
+              <input
+                type="number"
+                placeholder="Máx $"
+                value={salesMaxVal}
+                onChange={(e) => setSalesMaxVal(e.target.value)}
+                className="w-20 px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs outline-none"
+              />
+              {(salesStartDate || salesEndDate || salesStatus !== 'Todos' || salesProduct || salesMinVal || salesMaxVal) && (
+                <button
+                  onClick={() => {
+                    setSalesStartDate('');
+                    setSalesEndDate('');
+                    setSalesStatus('Todos');
+                    setSalesProduct('');
+                    setSalesMinVal('');
+                    setSalesMaxVal('');
+                  }}
+                  className="text-xs text-orange-600 font-bold hover:underline cursor-pointer ml-auto"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
           </div>
 

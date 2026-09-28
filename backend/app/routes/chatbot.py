@@ -208,3 +208,32 @@ async def chat_with_bot(req: ChatbotRequest):
         session_id=session_id,
         sugerencias=sugerencias
     )
+
+@router.get("/conversaciones")
+async def get_conversations(limit: int = 50):
+    """Obtiene el listado de conversaciones registradas con el chatbot."""
+    cursor = conversations_collection.find({}).sort("ultima_actividad", -1).limit(limit)
+    convs = []
+    async for c in cursor:
+        c["_id"] = str(c["_id"])
+        c["id"] = c["_id"]
+        convs.append(c)
+    return {"success": True, "total": len(convs), "conversaciones": convs}
+
+@router.get("/conversaciones/{session_id}/mensajes")
+async def get_conversation_messages(session_id: str):
+    """Obtiene los mensajes de una sesión de conversación específica."""
+    cursor = messages_collection.find({"session_id": session_id}).sort("fecha", 1)
+    msgs = []
+    async for m in cursor:
+        m["_id"] = str(m["_id"])
+        m["id"] = m["_id"]
+        msgs.append(m)
+    return {"success": True, "session_id": session_id, "total": len(msgs), "mensajes": msgs}
+
+@router.delete("/conversaciones/{session_id}")
+async def delete_conversation(session_id: str):
+    """Elimina una conversación y sus mensajes asociados."""
+    await messages_collection.delete_many({"session_id": session_id})
+    await conversations_collection.delete_one({"session_id": session_id})
+    return {"success": True, "message": f"Conversación {session_id} eliminada correctamente"}

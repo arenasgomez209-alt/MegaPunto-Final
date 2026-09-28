@@ -140,18 +140,28 @@ export const salesAPI = {
   create: (saleData) =>
     apiFetch('/ventas', { method: 'POST', body: JSON.stringify(saleData) }),
   getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
     return apiFetch(`/ventas${query ? `?${query}` : ''}`, { method: 'GET' });
   },
   getById: (id) =>
     apiFetch(`/ventas/${id}`, { method: 'GET' }),
   getByClient: (clienteId) =>
-    apiFetch(`/ventas/cliente/${clienteId}`, { method: 'GET' })
+    apiFetch(`/ventas/cliente/${clienteId}`, { method: 'GET' }),
+  updateStatus: (id, estado) =>
+    apiFetch(`/ventas/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado }) }),
+  delete: (id) =>
+    apiFetch(`/ventas/${id}`, { method: 'DELETE' })
 };
 
 export const invoicesAPI = {
   getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
     return apiFetch(`/facturas${query ? `?${query}` : ''}`, { method: 'GET' });
   },
   getById: (id) =>
@@ -159,7 +169,11 @@ export const invoicesAPI = {
   getByClient: (clienteId) =>
     apiFetch(`/facturas/cliente/${clienteId}`, { method: 'GET' }),
   downloadPdf: (id, invoiceNum = 'FAC') =>
-    downloadFile(`/api/facturas/${id}/pdf`, `Factura_${invoiceNum}.pdf`)
+    downloadFile(`/api/facturas/${id}/pdf`, `Factura_${invoiceNum}.pdf`),
+  updateStatus: (id, estado) =>
+    apiFetch(`/facturas/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado }) }),
+  delete: (id) =>
+    apiFetch(`/facturas/${id}`, { method: 'DELETE' })
 };
 
 export const reportsAPI = {
@@ -175,7 +189,10 @@ export const reportsAPI = {
 
 export const dashboardAPI = {
   getStats: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
     return apiFetch(`/dashboard/stats${query ? `?${query}` : ''}`, { method: 'GET' });
   }
 };
@@ -190,22 +207,35 @@ export const pqrAPI = {
     return apiFetch(`/pqr${q}`, { method: 'POST', body: JSON.stringify(pqrData) });
   },
   getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
     return apiFetch(`/pqr${query ? `?${query}` : ''}`, { method: 'GET' });
   },
   getByClient: (clienteId) =>
     apiFetch(`/pqr/cliente/${clienteId}`, { method: 'GET' }),
   getById: (id) =>
     apiFetch(`/pqr/${id}`, { method: 'GET' }),
+  update: (id, pqrData) =>
+    apiFetch(`/pqr/${id}`, { method: 'PUT', body: JSON.stringify(pqrData) }),
   updateStatus: (id, data, atendidoPor) => {
     const q = atendidoPor ? `?atendido_por=${encodeURIComponent(atendidoPor)}` : '';
     return apiFetch(`/pqr/${id}/estado${q}`, { method: 'PATCH', body: JSON.stringify(data) });
-  }
+  },
+  delete: (id) =>
+    apiFetch(`/pqr/${id}`, { method: 'DELETE' })
 };
 
 export const chatbotAPI = {
   sendMessage: (payload) =>
-    apiFetch('/chatbot/chat', { method: 'POST', body: JSON.stringify(payload) })
+    apiFetch('/chatbot/chat', { method: 'POST', body: JSON.stringify(payload) }),
+  getConversations: (limit = 50) =>
+    apiFetch(`/chatbot/conversaciones?limit=${limit}`, { method: 'GET' }),
+  getConversationMessages: (sessionId) =>
+    apiFetch(`/chatbot/conversaciones/${sessionId}/mensajes`, { method: 'GET' }),
+  deleteConversation: (sessionId) =>
+    apiFetch(`/chatbot/conversaciones/${sessionId}`, { method: 'DELETE' })
 };
 
 

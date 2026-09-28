@@ -17,11 +17,15 @@ async def get_dashboard_stats(
     fecha_inicio: Optional[str] = Query(None, description="YYYY-MM-DD"),
     fecha_fin: Optional[str] = Query(None, description="YYYY-MM-DD"),
     estado: Optional[str] = Query(None),
-    cliente_id: Optional[str] = Query(None)
+    cliente_id: Optional[str] = Query(None),
+    cliente: Optional[str] = Query(None, description="Nombre o email del cliente"),
+    producto: Optional[str] = Query(None, description="Filtrar ventas por nombre de producto"),
+    servicio: Optional[str] = Query(None, description="Filtrar ventas por nombre de servicio")
 ):
     """
     Retorna métricas consolidadas (Cards) y series temporales para gráficos
-    (barras, líneas, distribución de productos y categorías) con filtros dinámicos.
+    (barras, líneas, distribución de productos y categorías) con filtros dinámicos
+    por fecha inicial, fecha final, producto, servicio, estado y cliente.
     """
     # Totales base del sistema
     total_usuarios = await users_collection.count_documents({})
@@ -36,6 +40,15 @@ async def get_dashboard_stats(
         sales_filter["estado"] = estado
     if cliente_id:
         sales_filter["cliente_id"] = cliente_id
+    if cliente:
+        sales_filter["$or"] = [
+            {"cliente_nombre": {"$regex": cliente, "$options": "i"}},
+            {"cliente_email": {"$regex": cliente, "$options": "i"}}
+        ]
+    if producto:
+        sales_filter["items"] = {"$elemMatch": {"nombre": {"$regex": producto, "$options": "i"}, "tipo": "Producto"}}
+    if servicio:
+        sales_filter["items"] = {"$elemMatch": {"nombre": {"$regex": servicio, "$options": "i"}, "tipo": "Servicio"}}
 
     if fecha_inicio and fecha_fin:
         sales_filter["fecha"] = {"$gte": f"{fecha_inicio}T00:00:00", "$lte": f"{fecha_fin}T23:59:59"}
